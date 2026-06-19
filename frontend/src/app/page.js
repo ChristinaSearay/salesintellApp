@@ -1,7 +1,7 @@
 "use client";
 
-// Screen 1 — Accounts. A functional starting point (restyle with v0 later).
-// Live data via api.getAccounts(); each card links to /visit/[code].
+// Screen 1 — Accounts. v0's "Today's visits" design, driven by the live engine
+// (api.getAccounts() → /api proxy → Python).
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
@@ -15,32 +15,60 @@ export default function AccountsPage() {
     api.getAccounts().then(setAccounts).catch((e) => setErr(String(e)));
   }, []);
 
+  const needAttention = (accounts || []).filter((a) =>
+    a.alerts?.some((al) => al.tone === "danger")
+  ).length;
+
   return (
-    <main className="mx-auto min-h-screen max-w-md bg-neutral-50">
-      <header className="bg-gradient-to-br from-emerald-700 to-emerald-900 px-5 pb-5 pt-12 text-white">
-        <div className="text-2xl font-bold tracking-tight">Searay</div>
-        <div className="text-sm text-emerald-100/90">Sales Assistant</div>
+    <main className="mx-auto min-h-screen w-full max-w-md px-5 pb-12">
+      <header className="pt-12">
+        <div className="flex items-center justify-between">
+          <span className="text-[13px] font-semibold uppercase tracking-[0.18em] text-primary">
+            Searay
+          </span>
+          <span className="grid size-9 place-items-center rounded-full bg-card text-sm font-semibold text-foreground ring-1 ring-border">
+            SR
+          </span>
+        </div>
+
+        <h1 className="mt-7 font-serif text-[34px] font-semibold leading-[1.05] tracking-[-0.02em] text-balance text-foreground">
+          Today&apos;s visits
+        </h1>
+        <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
+          {accounts ? (
+            <>
+              {accounts.length} accounts to see
+              {needAttention > 0 && (
+                <>
+                  {" · "}
+                  <span className="font-semibold text-danger">{needAttention} need a nudge</span>
+                </>
+              )}
+              .
+            </>
+          ) : (
+            "Loading your accounts…"
+          )}
+        </p>
       </header>
 
-      <div className="p-5">
-        <h1 className="text-xl font-bold">Your accounts</h1>
-        <p className="mt-1 text-sm text-neutral-500">Tap a customer to prep your visit.</p>
+      {err && (
+        <p className="mt-6 rounded-2xl bg-danger-soft px-4 py-3 text-[14px] font-medium text-danger">
+          Can’t reach the engine. Start it with <code className="font-mono">uv run app</code>.
+        </p>
+      )}
 
-        {err && (
-          <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">
-            Can’t reach the API ({err}). Start it with <code className="font-mono">uv run app</code>.
-          </p>
-        )}
-        {!accounts && !err && <p className="mt-8 text-neutral-400">Loading…</p>}
+      <section aria-label="Your accounts" className="mt-7 flex flex-col gap-3">
+        {accounts?.map((a, i) => (
+          <AccountCard key={a.code} account={a} index={i} />
+        ))}
+      </section>
 
-        <ul className="mt-4 space-y-3">
-          {accounts?.map((a) => (
-            <li key={a.code}>
-              <AccountCard account={a} />
-            </li>
-          ))}
-        </ul>
-      </div>
+      {accounts && (
+        <p className="mt-8 text-center text-xs text-muted-foreground">
+          Tap a customer to prep your visit
+        </p>
+      )}
     </main>
   );
 }

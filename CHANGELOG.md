@@ -2,6 +2,9 @@
 
 ## 2026-06-19
 
+### Changed
+- Integrated v0's UI design into `frontend/` (warm-ivory "Lustre" theme, champagne-gold accent, Fraunces serif, framer-motion; redesigned `AccountCard`/`Pitch`, `globals.css`, `layout.js`) and wired it to the **live** engine — real reason names, real pitches, and the accept/skip → re-suggest learning loop (`api.js` `toAccount` now emits v0's `status`/`tone` shape). v0's mock `data.js`/`pitchPool` dropped in favour of `api.getPrep`/`sendFeedback`/`reset`.
+
 ### Added
 - `frontend/` two-screen flow wired to the live engine: Accounts list (`src/app/page.js`, `AccountCard`) → Visit prep (`src/app/visit/[code]/page.js`, `Pitch`) with the full accept/reject → re-suggest learning loop in React via `src/lib/api.js`.
 - `frontend/` — Next.js (App Router · JSX · Tailwind · shadcn-ready) rep UI scaffold for designing in v0. Proxies `/api/*` to the Python engine (`next.config.mjs`) and adapts responses into a plain-language view model (`src/lib/api.js`); verified end-to-end (Next :3000 → Python :8000). Plus `V0_PROMPT.md` (ready-to-paste v0 prompt) and `frontend/V0_WORKFLOW.md`.

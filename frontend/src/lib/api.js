@@ -49,7 +49,8 @@ export function toAccount(c) {
   const flag = FLAG[c.flag_key];
   if (flag) alerts.push({ icon: flag.icon, label: flag.label, tone: flag.tone });
   if (c.balance > 0) alerts.push({ icon: "💰", label: `Owes ${money(c.balance)}`, tone: "danger" });
-  return { code: c.code, name: c.name, emoji: seg.em, status: { label: seg.label, tone: seg.tone }, alerts };
+  // Shape matches v0's components: status as a string + a top-level tone.
+  return { code: c.code, name: c.name, emoji: seg.em, status: seg.label, tone: seg.tone, alerts };
 }
 
 function toPitch(a) {

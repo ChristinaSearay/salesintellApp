@@ -1,19 +1,117 @@
 @import "tailwindcss";
 
-/* The rep app is designed light. (Drop create-next-app's dark color-scheme
-   block — it turned inherited text near-white on our light backgrounds.) */
+/* ── Searay — jewellery wholesale rep app ──────────────────────────────
+   Warm ivory canvas, ink type, champagne-gold accent. Premium + a little
+   playful. Light only by design. */
+
 :root {
-  --background: #f5f5f5;
-  --foreground: #171717;
+  --background: #f4efe6;
+  --foreground: #211d17;
+
+  --card: #fffdf8;
+  --card-foreground: #211d17;
+
+  --popover: #fffdf8;
+  --popover-foreground: #211d17;
+
+  /* champagne gold */
+  --primary: #9a6b1f;
+  --primary-foreground: #fffdf8;
+
+  --secondary: #efe7d6;
+  --secondary-foreground: #4a3f2c;
+
+  --muted: #ece4d4;
+  --muted-foreground: #877a63;
+
+  --accent: #efe7d6;
+  --accent-foreground: #4a3f2c;
+
+  /* positive / sage emerald */
+  --good: #3f7a52;
+  --good-foreground: #f3f8f2;
+  --good-soft: #e7f0e6;
+
+  /* warn / amber */
+  --warn: #9a6a12;
+  --warn-soft: #f6ecd2;
+
+  /* danger / terracotta */
+  --danger: #a83a2a;
+  --danger-foreground: #fdf2ef;
+  --danger-soft: #f6e3dd;
+
+  /* info / slate-blue */
+  --info: #3d5a6c;
+  --info-soft: #e3eaee;
+
+  --border: #e3d8c2;
+  --input: #e3d8c2;
+  --ring: #9a6b1f;
+
+  --radius: 1.25rem;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-good: var(--good);
+  --color-good-foreground: var(--good-foreground);
+  --color-good-soft: var(--good-soft);
+
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-danger-soft: var(--danger-soft);
+
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-fraunces), ui-serif, Georgia, serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --radius-sm: calc(var(--radius) - 8px);
+  --radius-md: calc(var(--radius) - 4px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 6px);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
 }
+
+/* subtle entrance used across screens */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-rise { animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
