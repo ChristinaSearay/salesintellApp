@@ -76,6 +76,8 @@ class Handler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         if path == "/":
             return self._html(ROOT_HTML)
+        if path == "/healthz":
+            return self._json({"ok": True})
         if path == "/api/reasons":
             return self._json(reasons_payload())
         if path == "/api/customers":

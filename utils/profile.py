@@ -15,12 +15,12 @@ from constants.columns import (
     SalesCol,
     SalesStatus,
 )
-from constants.config import ANCHOR_DATE, INVOICE_FILE, SALES_FILE
+from constants.config import ANCHOR_DATE
 from constants.customers import TARGET_BY_CODE, TARGET_CODES, TargetCustomer
 from constants.meeting_notes import MEETING_NOTES, MeetingContext
 from constants.products import EXCLUDED_GROUPS, EXCLUDED_PRODUCT_CODES, canonical_group
 from constants.rfm import RelationshipFlag, Segment
-from utils.dataio import iter_table, load_table
+from utils.datasource import invoice_rows, sales_rows
 from utils.products import (
     CatalogueItem,
     load_catalogue,
@@ -76,7 +76,7 @@ class CustomerProfile:
 def _bucket_sales():
     """One pass over the sales file -> {code: [rows]} for the targets only."""
     buckets: Dict[str, list] = defaultdict(list)
-    for row in iter_table(SALES_FILE):
+    for row in sales_rows():
         if row.get(SalesCol.STATUS) != SalesStatus.COMPLETED:
             continue  # skips the stray 'Totals' footer too
         code = (row.get(SalesCol.CUSTOMER_CODE) or "").strip()
@@ -87,7 +87,7 @@ def _bucket_sales():
 
 def _bucket_invoices():
     buckets: Dict[str, list] = defaultdict(list)
-    for row in load_table(INVOICE_FILE):
+    for row in invoice_rows():
         code = (row.get(InvoiceCol.CUSTOMER_CODE) or "").strip()
         if code in TARGET_CODES:
             buckets[code].append(row)

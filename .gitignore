@@ -55,10 +55,10 @@ coverage.xml
 *.ipynb_checkpoints
 
 # App data & generated output
-# Raw Unleashed exports contain customer/sales data — keep local only
-Example Data/
+# Example Data/ (the Unleashed CSV exports) is COMMITTED so the deployed backend
+# has data. ⚠ It contains real customer/sales data — keep this repo PRIVATE.
+# The live Unleashed sync cache stays local-only:
 data/
-*.csv
 
 # Generated sales reports (re-run: python3 build_reports.py)
 reports/

@@ -9,6 +9,7 @@ dependencies = []
 [project.scripts]
 app = "app:main"
 dev = "dev:main"
+sync = "sync_unleashed:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -16,7 +17,7 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["constants", "utils"]
-only-include = ["app.py", "dev.py", "server.py", "constants", "utils"]
+only-include = ["app.py", "dev.py", "server.py", "sync_unleashed.py", "constants", "utils"]
 
 [tool.uv]
 package = true

@@ -64,6 +64,20 @@ The snapshot anchor date is **17 Jun 2026** (`constants/config.py`). RFM recency
 
 Customer balance owing for Class A is a manual input in `constants/customers.py` (not available in the exports).
 
+## Live data (Unleashed API) — optional
+
+Instead of manual CSV exports, the engine can pull live from the Unleashed API.
+
+```bash
+cp .env.example .env            # then fill in UNLEASHED_API_ID and UNLEASHED_API_KEY
+                                # (.env is gitignored and auto-loaded by every `uv run`)
+
+uv run sync                                  # pull → data/*.json (gitignored)
+SEARAY_DATA_SOURCE=unleashed uv run dev      # run the app on the synced data
+```
+
+Local config/secrets go in **`.env`** at the repo root — it's auto-loaded (no `--env-file` needed; a real shell env var still overrides it). `uv run sync` writes the **same row shape** the CSV loaders use (`utils/datasource.py` serves either source), so nothing downstream changes. **Status: scaffolded, not yet verified** — the field mappings in `utils/unleashed_sync.py` are marked `VERIFY`; run `sync` once with real credentials, eyeball `data/*.json`, and fix any empty field. Balance owing may not be exposed by the API and can stay a manual input.
+
 ## Scripts
 
 | Command | Purpose |

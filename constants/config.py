@@ -16,7 +16,8 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(BASE_DIR, "Example Data")
 REPORTS_DIR = os.path.join(BASE_DIR, "reports")
 # Per-customer learned preferences (rejection -> re-suggestion loop) live here.
-FEEDBACK_DIR = os.path.join(BASE_DIR, "feedback")
+# Override with SEARAY_FEEDBACK_DIR to point at a persistent disk (e.g. on Render).
+FEEDBACK_DIR = os.environ.get("SEARAY_FEEDBACK_DIR") or os.path.join(BASE_DIR, "feedback")
 
 # 24-month lookback window for RFM (informational; the exports are already
 # scoped to ~2 years by Unleashed).
@@ -24,6 +25,17 @@ LOOKBACK_MONTHS = 24
 
 # Rep web app (server.py / uv run app)
 DEFAULT_PORT = 8000
+
+
+# Where the engine reads its data from.
+class DataSource:
+    CSV = "csv"            # manual Unleashed exports in Example Data/
+    UNLEASHED = "unleashed"  # live sync cache in data/ (written by `uv run sync`)
+
+
+# Chosen by env var; defaults to the committed CSV workflow.
+DATA_SOURCE = os.environ.get("SEARAY_DATA_SOURCE", DataSource.CSV)
+CACHE_DIR = os.path.join(BASE_DIR, "data")  # Unleashed sync cache (gitignored)
 
 
 @dataclass(frozen=True)

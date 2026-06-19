@@ -10,7 +10,6 @@ from datetime import date
 from typing import Dict, List, Optional
 
 from constants.columns import ProductCol, ViewCol
-from constants.config import PRODUCTS_FILE, VIEW_PRODUCTS_FILE
 from constants.products import (
     EXCLUDED_GROUPS,
     EXCLUDED_PRODUCT_CODES,
@@ -18,7 +17,7 @@ from constants.products import (
     StockStatus,
     canonical_group,
 )
-from utils.dataio import load_table
+from utils.datasource import products_rows, view_products_rows
 from utils.parsing import parse_date, parse_money, parse_number
 
 
@@ -54,7 +53,7 @@ class CatalogueItem:
 def load_product_master() -> Dict[str, MasterProduct]:
     """code -> MasterProduct (canonical group) from File 1."""
     master: Dict[str, MasterProduct] = {}
-    for row in load_table(PRODUCTS_FILE):
+    for row in products_rows():
         code = (row.get(ProductCol.CODE) or "").strip()
         if not code:
             continue
@@ -70,7 +69,7 @@ def load_product_master() -> Dict[str, MasterProduct]:
 def load_catalogue(master: Dict[str, MasterProduct]) -> List[CatalogueItem]:
     """All View Products rows as CatalogueItems, group joined from the master."""
     catalogue: List[CatalogueItem] = []
-    for row in load_table(VIEW_PRODUCTS_FILE):
+    for row in view_products_rows():
         code = (row.get(ViewCol.CODE) or "").strip()
         if not code or code in EXCLUDED_PRODUCT_CODES:
             continue

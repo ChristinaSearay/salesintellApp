@@ -45,6 +45,7 @@ Both `build_reports.py` and `server.py` get a customer's current top-3 from `cur
 - File 3 Sales Enquiry → orders: recency, frequency, and the groups a customer already buys.
 - File 4 Invoice Enquiry → monetary (header-level totals only — no line items).
 - "New since last order" = a product's `Created On` is after the customer's last order date.
+- **Data source is pluggable** (`utils/datasource.py`): loaders read via `products_rows()`/`view_products_rows()`/`sales_rows()`/`invoice_rows()`, returning CSV rows (default) or the Unleashed sync cache (`data/*.json`) per `SEARAY_DATA_SOURCE`. Same column-keyed shape either way, so the engine is source-agnostic. Unleashed client/sync live in `utils/unleashed*.py` + `uv run sync` (mappings marked `VERIFY` until tested with real creds).
 
 ## Domain decisions baked in — intentional, do not "fix" as bugs
 - **Monetary = gross invoiced.** The invoice export contains no returns/credit lines, so it overstates retained revenue; reports flag consignment customers (e.g. My Jewellers). Do not assume returns exist in the data.
