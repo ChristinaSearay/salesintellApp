@@ -3,10 +3,12 @@
 ## 2026-06-19
 
 ### Added
+- `frontend/` two-screen flow wired to the live engine: Accounts list (`src/app/page.js`, `AccountCard`) → Visit prep (`src/app/visit/[code]/page.js`, `Pitch`) with the full accept/reject → re-suggest learning loop in React via `src/lib/api.js`.
 - `frontend/` — Next.js (App Router · JSX · Tailwind · shadcn-ready) rep UI scaffold for designing in v0. Proxies `/api/*` to the Python engine (`next.config.mjs`) and adapts responses into a plain-language view model (`src/lib/api.js`); verified end-to-end (Next :3000 → Python :8000). Plus `V0_PROMPT.md` (ready-to-paste v0 prompt) and `frontend/V0_WORKFLOW.md`.
 - `uv run app` — frees port 8000 if occupied, then starts the rep web app (`app.py`, `utils/port.py`, `[project.scripts]` entry point).
 
 ### Fixed
+- `frontend/src/app/globals.css` forced to a light theme — create-next-app's `prefers-color-scheme: dark` block turned inherited text near-white on the light UI (unreadable).
 - `server.py` prints a clear message when port 8000 is already in use, with steps to stop the old process or pick another port.
 
 ### Added
