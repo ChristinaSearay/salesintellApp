@@ -12,7 +12,8 @@ uv-managed, **standard library only** (no third-party deps). Use `uv` / `uv run`
 uv sync                            # create/refresh .venv
 uv run python analyze.py           # RFM scorecard + upsell matching to stdout (writes nothing)
 uv run python build_reports.py     # write reports/<code> - <name>.md for all 5 customers
-uv run python server.py            # rep web app + JSON API on :8000 (override with PORT)
+uv run app                         # JSON API engine on :8000 (override with PORT)
+cd frontend && pnpm dev            # rep UI (Next.js, v0 design) on :3000 — needs the engine
 ```
 
 - **Reset a customer's learning:** delete `feedback/<code>.json`, or `POST /api/customer/<code>/reset`, or "Start over" in the UI.
@@ -59,5 +60,5 @@ Both `build_reports.py` and `server.py` get a customer's current top-3 from `cur
 - New rejection reason → add to `RejectionReason` in `constants/feedback.py` and its effect in `preferences.apply_rejection()`.
 - Per-customer curated actions are structured data in `constants/recommended_actions.py` (these become the high-priority seeds in the pool).
 
-## Optional React frontend (`frontend/`)
-A Next.js (App Router · JSX · Tailwind · shadcn) UI for designing in v0 — **optional**; the zero-dependency `webapp/` UI still works. It does NOT replace the backend: the Python engine stays the brain. `frontend/next.config.mjs` proxies `/api/*` → `:8000`, and `frontend/src/lib/api.js` adapts the raw API into a plain-language view model the UI binds to (same shape as `V0_PROMPT.md`). Run both: `uv run app` (engine) + `cd frontend && pnpm dev`. Workflow in `frontend/V0_WORKFLOW.md`.
+## Rep UI — Next.js frontend (`frontend/`)
+The rep UI is a Next.js (App Router · JSX · Tailwind · shadcn) app on **:3000** with v0's design. It does NOT replace the backend: the Python engine stays the brain and serves the **API only** on :8000 (the old `webapp/` built-in UI was removed — `server.py` no longer serves static files). `frontend/next.config.mjs` proxies `/api/*` → `:8000`, and `frontend/src/lib/api.js` adapts the raw API into the view model the UI binds to (same shape as `V0_PROMPT.md`). Run both: `uv run app` (engine) + `cd frontend && pnpm dev`. Workflow in `frontend/V0_WORKFLOW.md`.

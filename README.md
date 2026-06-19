@@ -17,8 +17,9 @@ Proof-of-concept sales intelligence tool for jewellery wholesale reps. It ingest
 - Python 3.11+
 - [uv](https://docs.astral.sh/uv/) for environment management
 - Unleashed export CSVs (see [Data setup](#data-setup))
+- Node.js 20+ and pnpm — for the rep UI (the Next.js frontend in `frontend/`)
 
-No third-party Python packages — the project uses the standard library only.
+The Python engine uses the standard library only (no third-party packages). The Next.js frontend has its own npm dependencies.
 
 ## Quick start
 
@@ -39,11 +40,14 @@ uv run python analyze.py
 # Generate Markdown reports for all five customers
 uv run python build_reports.py
 
-# Start the rep web app
-uv run app
+# Install the frontend deps (first time only)
+cd frontend && pnpm install && cd ..
+
+# Start BOTH the API engine (:8000) and the rep UI (:3000)
+uv run dev
 ```
 
-Open **http://localhost:8000** on your computer, or the LAN URL printed in the terminal on a phone on the same Wi-Fi.
+Open **http://localhost:3000** — `uv run dev` runs both, and Ctrl+C stops both. (To run them separately: `uv run app` for the engine and `cd frontend && pnpm dev` for the UI.)
 
 ## Data setup
 
@@ -66,8 +70,10 @@ Customer balance owing for Class A is a manual input in `constants/customers.py`
 |---------|---------|
 | `uv run python analyze.py` | Step 2+3 checkpoint — prints RFM scorecard and per-customer product matching to the console |
 | `uv run python build_reports.py` | Step 4 — writes `reports/<code> - <name>.md` for each target customer |
-| `uv run app` | Start the rep web app (stops any stale listener on port 8000 first) |
-| `uv run python server.py` | Same web app, without auto port cleanup |
+| `uv run dev` | **Run both** — API engine (:8000) + rep UI (:3000) together; Ctrl+C stops both |
+| `uv run app` | Start just the API engine on :8000 (stops any stale listener first) |
+| `uv run python server.py` | Same, without the auto port cleanup |
+| `cd frontend && pnpm dev` | Start just the rep UI (Next.js) on :3000 — needs the engine running |
 
 Generated output:
 
@@ -76,15 +82,23 @@ Generated output:
 
 ## Web app
 
-The rep GUI (`webapp/`) is served by a zero-dependency stdlib HTTP server.
+The rep UI is a **Next.js app (`frontend/`)** on port 3000. The Python engine (`uv run app`) serves the **JSON API only** on port 8000, which the frontend proxies to.
+
+```bash
+uv run dev    # runs BOTH — API engine (:8000) + rep UI (:3000); Ctrl+C stops both
+```
+
+Or run them separately: `uv run app` (engine) + `cd frontend && pnpm dev` (UI).
+
+Open **http://localhost:3000**. The flow:
 
 1. Pick a customer from the list
 2. Review three recommended actions
-3. Tap **Good** or **No** on each action
-4. On rejection, select reason chips (price, group, discounts, pressure, etc.)
-5. Tap **Show me 3 better** to get a refreshed set informed by what was learned
+3. Accept (👍) or skip (👎) each one
+4. On a skip, tap a reason chip (price, group, discounts, pressure, etc.)
+5. Tap **Show me 3 better** for a refreshed set, informed by what was learned
 
-Deep-link to a customer: `http://localhost:8000/#c=MJ001`
+Deep-link to a customer: `http://localhost:3000/visit/MJ001`
 
 ### API
 
@@ -100,13 +114,13 @@ Deep-link to a customer: `http://localhost:8000/#c=MJ001`
 
 ```
 SalesIntelligentApp/
-├── app.py                  # uv run app — free port + start web server
+├── app.py                  # uv run app — free port + start API engine
 ├── analyze.py              # RFM + upsell checkpoint (stdout)
 ├── build_reports.py        # Generate Markdown reports
-├── server.py               # Web app + API server
+├── server.py               # JSON API engine (stdlib)
 ├── constants/              # Config, customers, RFM bands, meeting notes, feedback reasons
 ├── utils/                  # CSV I/O, RFM, profiles, products, candidates, recommendations
-├── webapp/                 # Static HTML/CSS/JS rep UI
+├── frontend/               # Rep UI — Next.js (v0) on :3000, proxies to the API
 ├── Example Data/           # Unleashed CSV exports (local only, gitignored)
 ├── reports/                # Generated reports (gitignored)
 └── feedback/               # Learned preferences (gitignored)
@@ -121,25 +135,24 @@ SalesIntelligentApp/
 
 ## Deployment (field use)
 
-The web app is designed for reps on their phone during customer visits. No cloud hosting is required for the POC — run the server on a laptop on the same Wi-Fi network.
+The app is designed for reps on their phone during customer visits. No cloud hosting is required for the POC — run both the engine and the UI on a laptop on the same Wi-Fi network.
 
 ```bash
-uv run app
-# or on a custom port:
-PORT=8080 uv run app
+uv run app                              # API engine on :8000 (binds 0.0.0.0)
+cd frontend && pnpm dev -- -H 0.0.0.0   # rep UI on :3000, exposed to the LAN
 ```
 
-The server binds to `0.0.0.0`, so other devices on the LAN can reach it.
+The phone loads the UI from `:3000`; the Next.js server proxies its `/api` calls to the engine on the same laptop.
 
-1. Start the server on your laptop
+1. Start both on your laptop (commands above)
 2. Find the laptop's LAN IP (e.g. **System Settings → Network** on macOS, or `ipconfig` / `ifconfig`)
-3. On the phone, open `http://<laptop-ip>:8000`
-4. Share a direct link to a customer: `http://<laptop-ip>:8000/#c=MJ001`
+3. On the phone, open `http://<laptop-ip>:3000`
+4. Share a direct link to a customer: `http://<laptop-ip>:3000/visit/MJ001`
 
 **Notes**
 
 - Keep the laptop awake and on the same Wi-Fi as the phone
-- macOS firewall may prompt to allow incoming connections the first time — allow Python
+- macOS firewall may prompt to allow incoming connections the first time — allow Python and Node
 - Learned preferences are saved locally in `feedback/`; back up that folder if you want to preserve rep feedback between sessions
 - Re-run `build_reports.py` after feedback sessions to refresh Markdown reports with the latest learned top-three actions
 
@@ -164,8 +177,8 @@ uv run python analyze.py          # sanity-check scorecard + matching
 # After changing report layout or recommendation logic:
 uv run python build_reports.py    # regenerate reports/
 
-# After changing the web app or API:
-uv run app                    # manual test on desktop + phone
+# After changing the API / engine:
+uv run app                    # then refresh the UI (frontend on :3000)
 ```
 
 ### Updating source data
@@ -193,10 +206,11 @@ Do not commit customer/sales data or runtime state:
 | Problem | Fix |
 |---------|-----|
 | `FileNotFoundError` on CSV load | Confirm all four files are in `Example Data/` with exact names from `constants/config.py` |
-| Phone cannot reach the app | Same Wi-Fi, correct LAN IP, firewall allows Python, server still running |
+| Phone cannot reach the app | Same Wi-Fi; open **`:3000`** at the laptop's LAN IP; firewall allows Python + Node; start the UI with `pnpm dev -- -H 0.0.0.0` |
 | `Address already in use` (port 8000) | Run `uv run app` — it stops stale listeners automatically. Or `PORT=8080 uv run app` |
+| `:8000` shows only an "API" page | Correct — that's the engine. The rep UI is on **`:3000`** (`cd frontend && pnpm dev`) |
 | Empty customer list or actions | Check that target customer codes exist in the sales/invoice exports |
-| Reports differ from web app | Run `build_reports.py` again — both use `utils/recommend.py`, but reports are only refreshed on build |
+| Reports differ from the UI | Run `build_reports.py` again — both use `utils/recommend.py`, but reports are only refreshed on build |
 | Garbled characters in console | Expected for latin-1 exports; file reads use the correct encoding per `FileSpec` |
 
 ## License

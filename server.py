@@ -1,8 +1,11 @@
-"""Zero-dependency web server for the rep-facing GUI (Python stdlib only).
+"""Searay Sales Assistant — JSON API engine (Python stdlib only).
 
 Run:  uv run app                  (recommended — frees the port if needed)
-      uv run python server.py     then open http://localhost:8000 (or the LAN URL
-it prints) on a phone on the same Wi-Fi.
+      uv run python server.py
+
+This serves the JSON API only. The rep UI is the Next.js frontend in `frontend/`
+(`cd frontend && pnpm dev` → http://localhost:3000), which proxies its /api calls
+here.
 
 API:
   GET  /api/reasons                      -> rejection-reason chips
@@ -16,23 +19,27 @@ import os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
-from constants.config import BASE_DIR, DEFAULT_PORT
+from constants.config import DEFAULT_PORT
 from constants.customers import TARGET_CODES
 from constants.feedback import RejectionReason
 from utils.recommend import actions_payload, customer_list, reset, submit_feedback
 
-WEBAPP_DIR = os.path.join(BASE_DIR, "webapp")
 PORT = int(os.environ.get("PORT", str(DEFAULT_PORT)))
 
-STATIC = {
-    "/": "index.html",
-    "/index.html": "index.html",
-    "/style.css": "style.css",
-    "/app.js": "app.js",
-}
-CONTENT_TYPES = {".html": "text/html; charset=utf-8",
-                 ".css": "text/css; charset=utf-8",
-                 ".js": "application/javascript; charset=utf-8"}
+# A small landing page so a browser hitting the engine port is pointed at the UI
+# (rather than getting a bare 404).
+ROOT_HTML = (
+    "<!doctype html><meta charset=utf-8><title>Searay API</title>"
+    "<body style='font-family:system-ui,-apple-system,sans-serif;max-width:34rem;"
+    "margin:14vh auto;padding:0 1.2rem;color:#211d17;background:#f4efe6'>"
+    "<h1 style='font-weight:800'>Searay Sales Assistant — API</h1>"
+    "<p>This port serves the JSON API only. The rep app UI runs on the Next.js "
+    "frontend:</p>"
+    "<p style='font-size:1.1rem'><code>cd frontend &amp;&amp; pnpm dev</code> &nbsp;→&nbsp; "
+    "<a href='http://localhost:3000' style='color:#9a6b1f;font-weight:700'>"
+    "http://localhost:3000</a></p>"
+    "<p style='color:#69736e'>Endpoints live under <code>/api/…</code></p></body>"
+).encode("utf-8")
 
 
 def reasons_payload():
@@ -53,16 +60,9 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def _file(self, name):
-        path = os.path.join(WEBAPP_DIR, name)
-        try:
-            with open(path, "rb") as fh:
-                body = fh.read()
-        except FileNotFoundError:
-            return self.send_error(404)
-        ext = os.path.splitext(name)[1]
-        self.send_response(200)
-        self.send_header("Content-Type", CONTENT_TYPES.get(ext, "application/octet-stream"))
+    def _html(self, body, status=200):
+        self.send_response(status)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
@@ -74,12 +74,8 @@ class Handler(BaseHTTPRequestHandler):
     # --- routing -----------------------------------------------------------
     def do_GET(self):
         path = urlparse(self.path).path
-        if path in STATIC:
-            return self._file(STATIC[path])
-        # Any other top-level file in webapp/ (no subpaths -> no traversal).
-        fname = path.lstrip("/")
-        if fname and "/" not in fname and os.path.isfile(os.path.join(WEBAPP_DIR, fname)):
-            return self._file(fname)
+        if path == "/":
+            return self._html(ROOT_HTML)
         if path == "/api/reasons":
             return self._json(reasons_payload())
         if path == "/api/customers":
@@ -120,14 +116,14 @@ def main():
         httpd = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
     except OSError as exc:
         if exc.errno == 48:  # macOS EADDRINUSE
-            print(f"\n  Port {PORT} is already in use (another server.py still running?).")
+            print(f"\n  Port {PORT} is already in use (another server still running?).")
             print(f"  Or use:  uv run app   (auto-stops stale listeners)")
             print(f"  Or use another port:  PORT=8080 uv run app\n")
             raise SystemExit(1) from exc
         raise
-    print(f"\n  Searay Sales Assistant running:")
-    print(f"    On this computer:  http://localhost:{PORT}")
-    print(f"    On your phone:     http://<this-computer's-LAN-IP>:{PORT}  (same Wi-Fi)")
+    print(f"\n  Searay Sales Assistant — API engine")
+    print(f"    API:  http://localhost:{PORT}/api/…")
+    print(f"    UI:   cd frontend && pnpm dev   →   http://localhost:3000")
     print(f"\n  Ctrl+C to stop.\n")
     try:
         httpd.serve_forever()

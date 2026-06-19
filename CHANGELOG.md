@@ -2,10 +2,14 @@
 
 ## 2026-06-19
 
+### Removed
+- Built-in `webapp/` UI and its static-file serving in `server.py` — port 8000 is now **JSON-API-only** (its root returns a small pointer to the Next.js UI). The rep UI is the Next.js frontend on :3000.
+
 ### Changed
 - Integrated v0's UI design into `frontend/` (warm-ivory "Lustre" theme, champagne-gold accent, Fraunces serif, framer-motion; redesigned `AccountCard`/`Pitch`, `globals.css`, `layout.js`) and wired it to the **live** engine — real reason names, real pitches, and the accept/skip → re-suggest learning loop (`api.js` `toAccount` now emits v0's `status`/`tone` shape). v0's mock `data.js`/`pitchPool` dropped in favour of `api.getPrep`/`sendFeedback`/`reset`.
 
 ### Added
+- `uv run dev` — one command that starts both the API engine (:8000) and the Next.js UI (:3000) together, and stops both on Ctrl+C (`dev.py`, `[project.scripts] dev`).
 - `frontend/` two-screen flow wired to the live engine: Accounts list (`src/app/page.js`, `AccountCard`) → Visit prep (`src/app/visit/[code]/page.js`, `Pitch`) with the full accept/reject → re-suggest learning loop in React via `src/lib/api.js`.
 - `frontend/` — Next.js (App Router · JSX · Tailwind · shadcn-ready) rep UI scaffold for designing in v0. Proxies `/api/*` to the Python engine (`next.config.mjs`) and adapts responses into a plain-language view model (`src/lib/api.js`); verified end-to-end (Next :3000 → Python :8000). Plus `V0_PROMPT.md` (ready-to-paste v0 prompt) and `frontend/V0_WORKFLOW.md`.
 - `uv run app` — frees port 8000 if occupied, then starts the rep web app (`app.py`, `utils/port.py`, `[project.scripts]` entry point).
