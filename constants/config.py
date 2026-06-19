@@ -22,6 +22,9 @@ FEEDBACK_DIR = os.path.join(BASE_DIR, "feedback")
 # scoped to ~2 years by Unleashed).
 LOOKBACK_MONTHS = 24
 
+# Rep web app (server.py / uv run app)
+DEFAULT_PORT = 8000
+
 
 @dataclass(frozen=True)
 class FileSpec:

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0e7c66" />
+  <meta name="theme-color" content="#0b5d4b" />
   <title>Searay Sales Assistant</title>
   <link rel="stylesheet" href="/style.css" />
 </head>
@@ -11,47 +11,65 @@
 
   <!-- ============ SCREEN 1: pick a customer ============ -->
   <section id="screen-list" class="screen is-active">
-    <header class="app-bar">
-      <div class="app-bar__title">Searay</div>
-      <div class="app-bar__sub">Who are you visiting?</div>
+    <header class="topbar">
+      <div class="brand">Searay</div>
+      <div class="topbar__sub">Sales Assistant</div>
     </header>
-    <main id="customer-list" class="list">
-      <div class="loading">Loading…</div>
-    </main>
+    <div class="screen__body">
+      <h1 class="page-title">Your accounts</h1>
+      <p class="page-hint">Tap a customer to prep your next visit — who they are, what’s going on, and 3 things to pitch.</p>
+      <main id="customer-list" class="list">
+        <div class="loading"><span class="spinner"></span> Loading…</div>
+      </main>
+    </div>
   </section>
 
-  <!-- ============ SCREEN 2: review the 3 actions ============ -->
+  <!-- ============ SCREEN 2: prep a visit ============ -->
   <section id="screen-actions" class="screen">
-    <header class="app-bar app-bar--detail">
-      <button id="back-btn" class="iconbtn" aria-label="Back">←</button>
-      <div class="app-bar__detail">
-        <div id="cust-name" class="app-bar__title"></div>
-        <div id="cust-snapshot" class="app-bar__sub"></div>
+    <header class="topbar topbar--detail">
+      <button id="back-btn" class="iconbtn" aria-label="Back to accounts">‹</button>
+      <div class="topbar__detail">
+        <div id="cust-name" class="topbar__name"></div>
+        <div id="cust-status" class="topbar__status"></div>
       </div>
     </header>
 
-    <div id="cust-badges" class="badges"></div>
+    <div class="screen__body">
+      <!-- the story -->
+      <section class="story">
+        <div class="story__head">
+          <span class="story__icon">📋</span>
+          <h2 class="story__title">Before you walk in</h2>
+        </div>
+        <p id="cust-kind" class="story__kind"></p>
+        <ul id="cust-hooks" class="story__hooks"></ul>
+        <div id="cust-meta" class="story__meta"></div>
+      </section>
 
-    <div id="learned" class="learned" hidden>
-      <span class="learned__label">📚 What I’ve learned:</span>
-      <span id="learned-chips"></span>
-      <button id="reset-btn" class="textbtn" title="Start this customer over">↺ Start over</button>
+      <!-- learned -->
+      <section id="learned" class="learned" hidden>
+        <div class="learned__top">
+          <span class="learned__label">📚 What I’ve learned</span>
+          <button id="reset-btn" class="textbtn">↺ Start over</button>
+        </div>
+        <div id="learned-chips" class="learned__chips"></div>
+      </section>
+
+      <!-- actions -->
+      <div class="actions-intro">
+        <h2 class="actions-intro__title">3 things to pitch</h2>
+        <p class="actions-intro__hint">Keep the good ones <b class="t-good">👍</b>, swap the rest <b class="t-bad">👎</b> — tell me why and I’ll find better ones.</p>
+      </div>
+
+      <main id="action-cards" class="cards"></main>
     </div>
 
-    <p class="helper">Tap <b class="good">👍 Good</b> or <b class="bad">👎 No</b> on each. If you tap No, tell me why — I’ll find better ones.</p>
-
-    <main id="action-cards" class="cards"></main>
-
-    <div class="spacer"></div>
-
     <footer class="actionbar">
-      <button id="next-btn" class="bigbtn bigbtn--primary">✨ Show me 3 better</button>
+      <button id="next-btn" class="bigbtn">✨ Show me 3 better</button>
     </footer>
   </section>
 
-  <!-- toast -->
   <div id="toast" class="toast" hidden></div>
-
   <script src="/app.js"></script>
 </body>
 </html>

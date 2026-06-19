@@ -103,8 +103,13 @@ def customer_summary(code: str) -> dict:
         "rfm": p.rfm_code,
         "balance": p.customer.balance_owing,
         "kind": CUSTOMER_KIND.get(code, ""),
+        "hooks": list(p.notes.hooks) if p.notes else [],
+        "next_contact": (p.notes.next_contact if p.notes else "") or "",
         "snapshot": (f"{p.frequency} orders · ${p.monetary:,.0f} in 24 months · "
                      f"last order {p.recency_days} days ago"),
+        "last_order_days": p.recency_days,
+        "orders": p.frequency,
+        "spend": p.monetary,
         "top_groups": [g.name for g in p.bought_groups[:4]],
         "learned": learned_chips(profile),
     }

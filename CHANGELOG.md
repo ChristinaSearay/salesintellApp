@@ -2,10 +2,15 @@
 
 ## 2026-06-19
 
+### Added
+- `frontend/` — Next.js (App Router · JSX · Tailwind · shadcn-ready) rep UI scaffold for designing in v0. Proxies `/api/*` to the Python engine (`next.config.mjs`) and adapts responses into a plain-language view model (`src/lib/api.js`); verified end-to-end (Next :3000 → Python :8000). Plus `V0_PROMPT.md` (ready-to-paste v0 prompt) and `frontend/V0_WORKFLOW.md`.
+- `uv run app` — frees port 8000 if occupied, then starts the rep web app (`app.py`, `utils/port.py`, `[project.scripts]` entry point).
+
 ### Fixed
 - `server.py` prints a clear message when port 8000 is already in use, with steps to stop the old process or pick another port.
 
 ### Added
+- Rep app "Before you walk in" story panel — plain-English status (segment/risk translated out of RFM jargon), the meeting-note signals, and key facts (spend, last order, usual categories) so a non-technical rep knows the context at a glance (`customer_summary` now returns `hooks`/`next_contact`/`spend`/`orders`/`last_order_days`).
 - CLAUDE.md — guidance for future Claude Code sessions: commands plus the big-picture architecture (shared recommender, learning pipeline) and the intentional domain decisions.
 - README.md — project overview, quick start, data setup, deployment (LAN/field use), development conventions, and troubleshooting.
 - uv project config (`pyproject.toml`) — project is now uv-managed (standard library only, no third-party deps).
@@ -22,4 +27,5 @@
 - Each report's 3 recommended actions name real product groups/codes/prices and flag any proposed incentive as pending head-office approval; includes a rep-feedback stub for the future interactive tool.
 
 ### Changed
+- Redesigned the rep web app — premium visual design (emerald/gold, serif wordmark, soft depth, large touch targets), plain-language status throughout (no RFM/segment jargon), and a clearer "accounts → prep visit → 3 pitches → keep/swap" flow.
 - Adopt `uv` for Python package/environment management; run scripts via `uv run python <script>` (e.g. `uv run python server.py`, `uv run python build_reports.py`) instead of `python3`/`pip`.

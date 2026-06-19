@@ -1,6 +1,7 @@
 """Zero-dependency web server for the rep-facing GUI (Python stdlib only).
 
-Run:  uv run python server.py    then open http://localhost:8000 (or the LAN URL
+Run:  uv run app                  (recommended — frees the port if needed)
+      uv run python server.py     then open http://localhost:8000 (or the LAN URL
 it prints) on a phone on the same Wi-Fi.
 
 API:
@@ -15,13 +16,13 @@ import os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
-from constants.config import BASE_DIR
+from constants.config import BASE_DIR, DEFAULT_PORT
 from constants.customers import TARGET_CODES
 from constants.feedback import RejectionReason
 from utils.recommend import actions_payload, customer_list, reset, submit_feedback
 
 WEBAPP_DIR = os.path.join(BASE_DIR, "webapp")
-PORT = int(os.environ.get("PORT", "8000"))
+PORT = int(os.environ.get("PORT", str(DEFAULT_PORT)))
 
 STATIC = {
     "/": "index.html",
@@ -120,8 +121,8 @@ def main():
     except OSError as exc:
         if exc.errno == 48:  # macOS EADDRINUSE
             print(f"\n  Port {PORT} is already in use (another server.py still running?).")
-            print(f"  Stop it:  lsof -nP -iTCP:{PORT} -sTCP:LISTEN   then  kill <PID>")
-            print(f"  Or use another port:  PORT=8080 uv run python server.py\n")
+            print(f"  Or use:  uv run app   (auto-stops stale listeners)")
+            print(f"  Or use another port:  PORT=8080 uv run app\n")
             raise SystemExit(1) from exc
         raise
     print(f"\n  Searay Sales Assistant running:")

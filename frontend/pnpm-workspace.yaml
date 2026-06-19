@@ -1,0 +1,6 @@
+# Explicit build-script decisions for pnpm 11. sharp (Next image optimization)
+# and unrs-resolver ship prebuilt binaries — approve them so pnpm doesn't treat
+# the decision as "undecided" (which fails Next's build-time dependency check).
+allowBuilds:
+  sharp: true
+  unrs-resolver: true

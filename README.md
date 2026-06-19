@@ -40,7 +40,7 @@ uv run python analyze.py
 uv run python build_reports.py
 
 # Start the rep web app
-uv run python server.py
+uv run app
 ```
 
 Open **http://localhost:8000** on your computer, or the LAN URL printed in the terminal on a phone on the same Wi-Fi.
@@ -66,7 +66,8 @@ Customer balance owing for Class A is a manual input in `constants/customers.py`
 |---------|---------|
 | `uv run python analyze.py` | Step 2+3 checkpoint — prints RFM scorecard and per-customer product matching to the console |
 | `uv run python build_reports.py` | Step 4 — writes `reports/<code> - <name>.md` for each target customer |
-| `uv run python server.py` | Serves the rep web app and JSON API on port 8000 (override with `PORT` env var) |
+| `uv run app` | Start the rep web app (stops any stale listener on port 8000 first) |
+| `uv run python server.py` | Same web app, without auto port cleanup |
 
 Generated output:
 
@@ -99,6 +100,7 @@ Deep-link to a customer: `http://localhost:8000/#c=MJ001`
 
 ```
 SalesIntelligentApp/
+├── app.py                  # uv run app — free port + start web server
 ├── analyze.py              # RFM + upsell checkpoint (stdout)
 ├── build_reports.py        # Generate Markdown reports
 ├── server.py               # Web app + API server
@@ -122,9 +124,9 @@ SalesIntelligentApp/
 The web app is designed for reps on their phone during customer visits. No cloud hosting is required for the POC — run the server on a laptop on the same Wi-Fi network.
 
 ```bash
-uv run python server.py
+uv run app
 # or on a custom port:
-PORT=8080 uv run python server.py
+PORT=8080 uv run app
 ```
 
 The server binds to `0.0.0.0`, so other devices on the LAN can reach it.
@@ -163,7 +165,7 @@ uv run python analyze.py          # sanity-check scorecard + matching
 uv run python build_reports.py    # regenerate reports/
 
 # After changing the web app or API:
-uv run python server.py           # manual test on desktop + phone
+uv run app                    # manual test on desktop + phone
 ```
 
 ### Updating source data
@@ -192,7 +194,7 @@ Do not commit customer/sales data or runtime state:
 |---------|-----|
 | `FileNotFoundError` on CSV load | Confirm all four files are in `Example Data/` with exact names from `constants/config.py` |
 | Phone cannot reach the app | Same Wi-Fi, correct LAN IP, firewall allows Python, server still running |
-| `Address already in use` (port 8000) | Another `server.py` is still running — `lsof -nP -iTCP:8000 -sTCP:LISTEN` then `kill <PID>`, or use `PORT=8080 uv run python server.py` |
+| `Address already in use` (port 8000) | Run `uv run app` — it stops stale listeners automatically. Or `PORT=8080 uv run app` |
 | Empty customer list or actions | Check that target customer codes exist in the sales/invoice exports |
 | Reports differ from web app | Run `build_reports.py` again — both use `utils/recommend.py`, but reports are only refreshed on build |
 | Garbled characters in console | Expected for latin-1 exports; file reads use the correct encoding per `FileSpec` |

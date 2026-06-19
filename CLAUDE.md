@@ -58,3 +58,6 @@ Both `build_reports.py` and `server.py` get a customer's current top-3 from `cur
 - New recommendation type → add a `Candidate` generator in `utils/candidates.py` (tag its `kind` / `incentive_type` / `price_point`).
 - New rejection reason → add to `RejectionReason` in `constants/feedback.py` and its effect in `preferences.apply_rejection()`.
 - Per-customer curated actions are structured data in `constants/recommended_actions.py` (these become the high-priority seeds in the pool).
+
+## Optional React frontend (`frontend/`)
+A Next.js (App Router · JSX · Tailwind · shadcn) UI for designing in v0 — **optional**; the zero-dependency `webapp/` UI still works. It does NOT replace the backend: the Python engine stays the brain. `frontend/next.config.mjs` proxies `/api/*` → `:8000`, and `frontend/src/lib/api.js` adapts the raw API into a plain-language view model the UI binds to (same shape as `V0_PROMPT.md`). Run both: `uv run app` (engine) + `cd frontend && pnpm dev`. Workflow in `frontend/V0_WORKFLOW.md`.
