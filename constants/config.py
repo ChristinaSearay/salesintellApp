@@ -15,6 +15,8 @@ ANCHOR_DATE = date(2026, 6, 17)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(BASE_DIR, "Example Data")
 REPORTS_DIR = os.path.join(BASE_DIR, "reports")
+# Per-customer learned preferences (rejection -> re-suggestion loop) live here.
+FEEDBACK_DIR = os.path.join(BASE_DIR, "feedback")
 
 # 24-month lookback window for RFM (informational; the exports are already
 # scoped to ~2 years by Unleashed).

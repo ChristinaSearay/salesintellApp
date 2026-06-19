@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0e7c66" />
+  <title>Searay Sales Assistant</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+
+  <!-- ============ SCREEN 1: pick a customer ============ -->
+  <section id="screen-list" class="screen is-active">
+    <header class="app-bar">
+      <div class="app-bar__title">Searay</div>
+      <div class="app-bar__sub">Who are you visiting?</div>
+    </header>
+    <main id="customer-list" class="list">
+      <div class="loading">Loading…</div>
+    </main>
+  </section>
+
+  <!-- ============ SCREEN 2: review the 3 actions ============ -->
+  <section id="screen-actions" class="screen">
+    <header class="app-bar app-bar--detail">
+      <button id="back-btn" class="iconbtn" aria-label="Back">←</button>
+      <div class="app-bar__detail">
+        <div id="cust-name" class="app-bar__title"></div>
+        <div id="cust-snapshot" class="app-bar__sub"></div>
+      </div>
+    </header>
+
+    <div id="cust-badges" class="badges"></div>
+
+    <div id="learned" class="learned" hidden>
+      <span class="learned__label">📚 What I’ve learned:</span>
+      <span id="learned-chips"></span>
+      <button id="reset-btn" class="textbtn" title="Start this customer over">↺ Start over</button>
+    </div>
+
+    <p class="helper">Tap <b class="good">👍 Good</b> or <b class="bad">👎 No</b> on each. If you tap No, tell me why — I’ll find better ones.</p>
+
+    <main id="action-cards" class="cards"></main>
+
+    <div class="spacer"></div>
+
+    <footer class="actionbar">
+      <button id="next-btn" class="bigbtn bigbtn--primary">✨ Show me 3 better</button>
+    </footer>
+  </section>
+
+  <!-- toast -->
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

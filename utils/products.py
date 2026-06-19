@@ -117,6 +117,23 @@ def rank_items(items: List[CatalogueItem]) -> List[CatalogueItem]:
     )
 
 
+def make_resolver(master: Dict[str, MasterProduct], catalogue: List[CatalogueItem]):
+    """code -> (description, price, stock_label|None). Catalogue (with live
+    stock) wins; master is the fallback for items not in View Products."""
+    cat_by_code = {i.code: i for i in catalogue}
+
+    def resolve(code: str):
+        item = cat_by_code.get(code)
+        if item:
+            return (item.description, item.sell_price, item.stock_status.value)
+        m = master.get(code)
+        if m:
+            return (m.description, m.sell_price, None)
+        return (code, None, None)
+
+    return resolve
+
+
 def newest_in_groups(catalogue: List[CatalogueItem], groups, limit: int = 5,
                      in_stock_only: bool = False) -> List[CatalogueItem]:
     """Newest catalogue items within a set of groups (e.g. meeting-notes hooks),

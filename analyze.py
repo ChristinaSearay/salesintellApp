@@ -1,7 +1,7 @@
 """Step 2 + Step 3 checkpoint: compute RFM and the upsell matches for all five
 target customers and print them for review (no report files written yet).
 
-Run:  python3 analyze.py
+Run:  uv run python analyze.py
 """
 from constants.config import ANCHOR_DATE
 from utils.profile import build_profiles

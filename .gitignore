@@ -63,6 +63,9 @@ data/
 # Generated sales reports (re-run: python3 build_reports.py)
 reports/
 
+# Per-customer learned preferences (runtime state from the rep feedback loop)
+feedback/
+
 # Logs
 *.log
 logs/

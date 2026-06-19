@@ -1,34 +1,16 @@
 """Step 4 — generate the five one-page Markdown sales action reports.
 
-Run:  python3 build_reports.py
+Run:  uv run python build_reports.py
 Writes reports/<code> - <name>.md and prints a summary.
 """
 import os
 import re
 
 from constants.config import REPORTS_DIR
-from constants.recommended_actions import RECOMMENDED_ACTIONS
-from utils.products import load_catalogue, load_product_master
+from utils.products import load_catalogue, load_product_master, make_resolver
 from utils.profile import build_profiles
+from utils.recommend import current_actions
 from utils.report import render
-
-
-def make_resolver(master, catalogue):
-    """code -> (description, price, stock_label|None). Catalogue (with live
-    stock) takes priority; master is the fallback for items not in View
-    Products (e.g. the testing machines)."""
-    cat_by_code = {i.code: i for i in catalogue}
-
-    def resolve(code):
-        item = cat_by_code.get(code)
-        if item:
-            return (item.description, item.sell_price, item.stock_status.value)
-        m = master.get(code)
-        if m:
-            return (m.description, m.sell_price, None)
-        return (code, None, None)
-
-    return resolve
 
 
 def _safe_name(name: str) -> str:
@@ -44,7 +26,9 @@ def main() -> None:
     os.makedirs(REPORTS_DIR, exist_ok=True)
     written = []
     for p in profiles:
-        actions = RECOMMENDED_ACTIONS.get(p.customer.code, ())
+        # Pull the current top-3 from the shared engine so any learned
+        # preferences (rejection -> re-suggestion loop) are reflected here too.
+        actions = current_actions(p.customer.code, 3)
         md = render(p, actions, resolve)
         fname = f"{p.customer.code} - {_safe_name(p.customer.name)}.md"
         path = os.path.join(REPORTS_DIR, fname)
