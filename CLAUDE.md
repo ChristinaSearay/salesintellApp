@@ -17,7 +17,7 @@ cd frontend && pnpm dev            # rep UI (Next.js, v0 design) on :3000 — ne
 ```
 
 - **Reset a customer's learning:** delete `feedback/<code>.json`, or `POST /api/customer/<code>/reset`, or "Start over" in the UI.
-- **No automated test suite or linter is configured.** Sanity-check changes by running `analyze.py` (the numbers) and the GUI. The upsell join has a known anchor: My Jewellers (`MJ001`) has exactly 74 products created since its last order (27/03/2026) — a good regression check.
+- **No automated test suite or linter is configured.** Sanity-check changes by running `analyze.py` (the numbers) and the GUI. For a stable regression baseline run in CSV mode (`SEARAY_DATA_SOURCE=csv uv run python analyze.py`): the upsell join's known anchor there is My Jewellers (`MJ001`) with exactly 70 post-exclusion products created since its last order (27/03/2026). Live-mode numbers move with every sync, so don't diff those.
 
 Project conventions (also enforced by `~/.claude/CLAUDE.md`): enums/config live in `constants/` (no raw string/int comparisons in logic); reusable logic in `utils/`; entry-point scripts stay thin; log behaviour changes in `CHANGELOG.md`.
 
@@ -46,11 +46,11 @@ Both `build_reports.py` and `server.py` get a customer's current top-3 from `cur
 - File 3 Sales Enquiry → orders: recency, frequency, the groups a customer already buys, and the per-order contact columns that feed the customer contact card (most recent order wins, per field; a synced `data/customers.json` overrides field-by-field when present).
 - File 4 Invoice Enquiry → monetary (header-level totals only — no line items).
 - "New since last order" = a product's `Created On` is after the customer's last order date.
-- **Data source is pluggable** (`utils/datasource.py`): loaders read via `products_rows()`/`view_products_rows()`/`sales_rows()`/`invoice_rows()`, returning CSV rows (default) or the Unleashed sync cache (`data/*.json`) per `SEARAY_DATA_SOURCE`. Same column-keyed shape either way, so the engine is source-agnostic. Unleashed client/sync live in `utils/unleashed*.py` + `uv run sync` (mappings marked `VERIFY` until tested with real creds).
+- **Data source is pluggable** (`utils/datasource.py`): loaders read via `products_rows()`/`view_products_rows()`/`sales_rows()`/`invoice_rows()`/`customer_rows()`, returning the Unleashed sync cache (`data/*.json`, **the default since 04 Sep 2026, committed to the repo**) or CSV rows (`SEARAY_DATA_SOURCE=csv`). Same column-keyed shape either way, so the engine is source-agnostic — but the cache stores numbers as JSON numbers, so parsers must accept both (see `utils/parsing.py`). Unleashed client/sync live in `utils/unleashed*.py` + `uv run sync` (mappings verified against real API responses on 04 Sep 2026; refresh = sync, commit `data/`, push).
 
 ## Domain decisions baked in — intentional, do not "fix" as bugs
 - **Monetary = gross invoiced.** The invoice export contains no returns/credit lines, so it overstates retained revenue; reports flag consignment customers (e.g. My Jewellers). Do not assume returns exist in the data.
-- **Anchor date = 17 Jun 2026** (`ANCHOR_DATE` in `constants/config.py`), the export snapshot — recency is measured from it, not wall-clock time.
+- **Anchor date tracks the data source** (`ANCHOR_DATE` in `constants/config.py`): live Unleashed mode anchors on **today** (process start); CSV mode keeps the export snapshot **17 Jun 2026** — never a fixed date against live data (recency goes negative) and never wall-clock against the CSVs.
 - **RFM uses absolute bands, not quintiles** (`constants/rfm.py`) — with only 5 customers, quintiles are meaningless.
 - **Segment is objective RFM; the meeting-notes relationship flag annotates it, never overwrites** (e.g. Class A reads "Champion ⚠ churn risk").
 - **Balance owing is a manual input** (`constants/customers.py`), not derivable from the exports.

@@ -2,6 +2,10 @@
 
 ## 2026-09-04
 
+### Changed
+- Live Unleashed data is now the default data source (`SEARAY_DATA_SOURCE` defaults to `unleashed`; set `csv` for the snapshot exports). The sync cache `data/*.json` is committed so deployed copies have it — refresh with `uv run sync`, commit, push.
+- Anchor date now tracks the data source: today in live mode, the 17 Jun 2026 snapshot in CSV mode (`CSV_SNAPSHOT_DATE`).
+
 ### Added
 - Customer contact card (contact name · phone · email) under the company name on the visit page, in the API (`customer_summary.contact`) and in the Markdown report header — derived from the Unleashed sales export's per-order contact columns (most recent order wins, per field).
 - `uv run sync` now also pulls the Unleashed Customers endpoint into `data/customers.json` (`CustomerCol`, mappings marked VERIFY); when present it overrides the order-row contact field-by-field, preferring mobile over landline.

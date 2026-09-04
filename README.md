@@ -51,7 +51,23 @@ Open **http://localhost:3000** — `uv run dev` runs both, and Ctrl+C stops both
 
 ## Data setup
 
-Exports live in `Example Data/` (gitignored — not committed to the repo). Place these four Unleashed files there:
+**The engine runs on live Unleashed data by default** (since 04 Sep 2026): the sync cache in `data/*.json`, written by `uv run sync` and committed so deployed copies have it. To refresh the data:
+
+```bash
+cp .env.example .env    # first time only — fill in UNLEASHED_API_ID and UNLEASHED_API_KEY
+                        # (.env is gitignored and auto-loaded by every `uv run`)
+
+uv run sync             # pull ~24 months from the Unleashed API → data/*.json (~10 min)
+git add data && git commit -m "refresh unleashed cache" && git push   # deployed copies pick it up
+```
+
+The field mappings in `utils/unleashed_sync.py` were verified against real API responses on 04 Sep 2026. The RFM anchor date in live mode is **today** — recency is measured against the current date.
+
+Customer balance owing for Class A is a manual input in `constants/customers.py` (not exposed by the exports or the API).
+
+### CSV snapshot mode (fallback / regression baseline)
+
+Set `SEARAY_DATA_SOURCE=csv` to run on the committed CSV exports in `Example Data/` instead:
 
 | File | Encoding | Header row |
 |------|----------|------------|
@@ -60,23 +76,9 @@ Exports live in `Example Data/` (gitignored — not committed to the repo). Plac
 | `3. Sales Enquiry Export - 17.6.26.csv` | Latin-1 | Row 1 |
 | `4. Invoice Enquiry Export - 17.6.26.csv` | Latin-1 | Row 1 |
 
-The snapshot anchor date is **17 Jun 2026** (`constants/config.py`). RFM recency is measured from that date, not wall-clock time.
+In CSV mode the anchor date is the snapshot date **17 Jun 2026** (`constants/config.py`), not wall-clock time, so its numbers are stable — useful as a regression baseline.
 
-Customer balance owing for Class A is a manual input in `constants/customers.py` (not available in the exports).
-
-## Live data (Unleashed API) — optional
-
-Instead of manual CSV exports, the engine can pull live from the Unleashed API.
-
-```bash
-cp .env.example .env            # then fill in UNLEASHED_API_ID and UNLEASHED_API_KEY
-                                # (.env is gitignored and auto-loaded by every `uv run`)
-
-uv run sync                                  # pull → data/*.json (gitignored)
-SEARAY_DATA_SOURCE=unleashed uv run dev      # run the app on the synced data
-```
-
-Local config/secrets go in **`.env`** at the repo root — it's auto-loaded (no `--env-file` needed; a real shell env var still overrides it). `uv run sync` writes the **same row shape** the CSV loaders use (`utils/datasource.py` serves either source), so nothing downstream changes. **Status: scaffolded, not yet verified** — the field mappings in `utils/unleashed_sync.py` are marked `VERIFY`; run `sync` once with real credentials, eyeball `data/*.json`, and fix any empty field. Balance owing may not be exposed by the API and can stay a manual input.
+Local config/secrets go in **`.env`** at the repo root — it's auto-loaded (no `--env-file` needed; a real shell env var still overrides it). `uv run sync` writes the **same row shape** the CSV loaders use (`utils/datasource.py` serves either source), so nothing downstream changes.
 
 ## Scripts
 

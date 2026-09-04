@@ -8,9 +8,22 @@ import os
 from dataclasses import dataclass
 from datetime import date
 
-# All four exports are dated "as of 17/06/2026"; recency is measured from this
-# snapshot, not the wall-clock date. (Confirmed with business owner.)
-ANCHOR_DATE = date(2026, 6, 17)
+# Where the engine reads its data from.
+class DataSource:
+    CSV = "csv"            # manual Unleashed exports in Example Data/
+    UNLEASHED = "unleashed"  # live sync cache in data/ (written by `uv run sync`)
+
+
+# Chosen by env var; live Unleashed data is the default since 04 Sep 2026.
+# SEARAY_DATA_SOURCE=csv returns to the committed snapshot exports.
+DATA_SOURCE = os.environ.get("SEARAY_DATA_SOURCE", DataSource.UNLEASHED)
+
+# Recency is measured from the data's snapshot date. Live Unleashed data is
+# current, so the anchor is today; the CSV exports are dated "as of 17/06/2026",
+# so CSV mode keeps that fixed anchor (confirmed with business owner) — which
+# also keeps the CSV regression numbers stable.
+CSV_SNAPSHOT_DATE = date(2026, 6, 17)
+ANCHOR_DATE = date.today() if DATA_SOURCE == DataSource.UNLEASHED else CSV_SNAPSHOT_DATE
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(BASE_DIR, "Example Data")
@@ -29,15 +42,7 @@ LOOKBACK_MONTHS = 24
 DEFAULT_PORT = 8000
 
 
-# Where the engine reads its data from.
-class DataSource:
-    CSV = "csv"            # manual Unleashed exports in Example Data/
-    UNLEASHED = "unleashed"  # live sync cache in data/ (written by `uv run sync`)
-
-
-# Chosen by env var; defaults to the committed CSV workflow.
-DATA_SOURCE = os.environ.get("SEARAY_DATA_SOURCE", DataSource.CSV)
-CACHE_DIR = os.path.join(BASE_DIR, "data")  # Unleashed sync cache (gitignored)
+CACHE_DIR = os.path.join(BASE_DIR, "data")  # Unleashed sync cache (committed, like Example Data/)
 
 
 @dataclass(frozen=True)
