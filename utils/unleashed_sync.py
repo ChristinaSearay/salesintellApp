@@ -13,7 +13,7 @@ import os
 import re
 from datetime import datetime, timedelta, timezone
 
-from constants.columns import InvoiceCol, ProductCol, SalesCol, ViewCol
+from constants.columns import CustomerCol, InvoiceCol, ProductCol, SalesCol, ViewCol
 from constants.config import CACHE_DIR
 from constants.unleashed import LOOKBACK_DAYS
 from utils import unleashed as api
@@ -99,6 +99,21 @@ def map_invoices(invoices: list) -> list:
     return rows
 
 
+def map_customers(customers: list) -> list:
+    rows = []
+    for c in customers:
+        first = (c.get("ContactFirstName") or "").strip()     # VERIFY
+        last = (c.get("ContactLastName") or "").strip()       # VERIFY
+        rows.append({
+            CustomerCol.CODE: c.get("CustomerCode", ""),
+            CustomerCol.CONTACT_NAME: " ".join(x for x in (first, last) if x),
+            CustomerCol.PHONE: c.get("PhoneNumber", "") or "",   # VERIFY
+            CustomerCol.MOBILE: c.get("MobileNumber", "") or "", # VERIFY
+            CustomerCol.EMAIL: c.get("Email", "") or "",         # VERIFY
+        })
+    return rows
+
+
 def _start_date() -> str:
     """ISO date ~24 months back, for the order/invoice fetch filters."""
     return (datetime.now(tz=timezone.utc) - timedelta(days=LOOKBACK_DAYS)).strftime("%Y-%m-%d")
@@ -119,13 +134,16 @@ def sync() -> None:
     stock = api.fetch_stock_on_hand()
     orders = api.fetch_sales_orders(start)
     invoices = api.fetch_invoices(start)
+    customers = api.fetch_customers()
 
     _write("products.json", map_products(products))
     _write("view_products.json", map_view_products(stock, product_by_code))
     _write("sales.json", map_sales(orders, product_by_code))
     _write("invoices.json", map_invoices(invoices))
+    _write("customers.json", map_customers(customers))
 
     print(f"Synced to {CACHE_DIR}/  —  products={len(products)} stock={len(stock)} "
-          f"orders={len(orders)} invoices={len(invoices)} (since {start})")
+          f"orders={len(orders)} invoices={len(invoices)} customers={len(customers)} "
+          f"(since {start})")
     print("⚠ Eyeball data/*.json and fix any empty VERIFY-marked field, then set "
           "SEARAY_DATA_SOURCE=unleashed.")

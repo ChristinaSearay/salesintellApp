@@ -6,7 +6,7 @@ POC sales-intelligence tool for jewellery wholesale reps: RFM scoring + an upsel
 
 ## Commands
 
-uv-managed, **standard library only** (no third-party deps). Use `uv` / `uv run`, never pip.
+uv-managed, standard library plus the `anthropic` SDK (used only by `utils/summariser.py`). Use `uv` / `uv run`, never pip.
 
 ```bash
 uv sync                            # create/refresh .venv
@@ -28,6 +28,7 @@ Data (4 CSVs in `Example Data/`) → engine (`utils/`) → two outputs (Markdown
 ### `utils/recommend.py` is the single source of truth
 Both `build_reports.py` and `server.py` get a customer's current top-3 from `current_actions(code)`. Two behaviours matter before editing:
 - `_engine()` builds every `CustomerProfile` and candidate pool **once per process and caches them** → after changing profile/candidate/pool logic you must **restart `server.py`** to see the effect.
+- Live intel (`utils/intel.py`, `notes/<code>.json`) is also read fresh every call: `effective_context(code)` layers summarised WhatsApp updates over `MEETING_NOTES` (hooks, opportunity groups, relationship flag, prior incentive); `recommend._live_candidates()` adds per-request candidates for new groups / requested terms and `_tilt_for_relationship()` re-weights on churn. The summariser (`utils/summariser.py`, Claude with a JSON-schema output, needs `ANTHROPIC_API_KEY`) only *proposes*; nothing is saved until the rep confirms in `/inbox`.
 - The per-customer `PreferenceProfile` is loaded **fresh every call** from `feedback/<code>.json` → rep feedback takes effect immediately in the GUI, and in reports on the next `build_reports.py`. This is how learning "feeds back into reports."
 
 ### Recommendation pipeline (read these four together)
@@ -42,7 +43,7 @@ Both `build_reports.py` and `server.py` get a customer's current top-3 from `cur
 ### Data layer & the upsell join (`constants/config.py` `FileSpec` = per-file encoding + title-row offset; the files differ)
 - File 1 Products → product master (code → Product Group).
 - File 2 View Products → "new" products (`Created On`) + live stock, but has **no group** → joined to File 1 on code (`utils/products.py`).
-- File 3 Sales Enquiry → orders: recency, frequency, and the groups a customer already buys.
+- File 3 Sales Enquiry → orders: recency, frequency, the groups a customer already buys, and the per-order contact columns that feed the customer contact card (most recent order wins, per field; a synced `data/customers.json` overrides field-by-field when present).
 - File 4 Invoice Enquiry → monetary (header-level totals only — no line items).
 - "New since last order" = a product's `Created On` is after the customer's last order date.
 - **Data source is pluggable** (`utils/datasource.py`): loaders read via `products_rows()`/`view_products_rows()`/`sales_rows()`/`invoice_rows()`, returning CSV rows (default) or the Unleashed sync cache (`data/*.json`) per `SEARAY_DATA_SOURCE`. Same column-keyed shape either way, so the engine is source-agnostic. Unleashed client/sync live in `utils/unleashed*.py` + `uv run sync` (mappings marked `VERIFY` until tested with real creds).

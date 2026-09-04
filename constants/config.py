@@ -18,6 +18,8 @@ REPORTS_DIR = os.path.join(BASE_DIR, "reports")
 # Per-customer learned preferences (rejection -> re-suggestion loop) live here.
 # Override with SEARAY_FEEDBACK_DIR to point at a persistent disk (e.g. on Render).
 FEEDBACK_DIR = os.environ.get("SEARAY_FEEDBACK_DIR") or os.path.join(BASE_DIR, "feedback")
+# Per-customer live intel (summarised WhatsApp updates) layered over meeting notes.
+NOTES_DIR = os.environ.get("SEARAY_NOTES_DIR") or os.path.join(BASE_DIR, "notes")
 
 # 24-month lookback window for RFM (informational; the exports are already
 # scoped to ~2 years by Unleashed).

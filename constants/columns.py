@@ -15,6 +15,19 @@ class SalesCol:
     STATUS = "Status"
     QUANTITY = "Quantity"
     SUB_TOTAL = "Sub Total"
+    CONTACT_NAME = "Contact Name"
+    CONTACT_PHONE = "Contact Phone"
+    CONTACT_EMAIL = "Contact Email"
+
+
+class CustomerCol:
+    """Customers cache (data/customers.json) — Unleashed sync only; there is no
+    matching CSV export, so CSV mode falls back to the order-row contact."""
+    CODE = "Customer Code"
+    CONTACT_NAME = "Contact Name"
+    PHONE = "Phone"
+    MOBILE = "Mobile"
+    EMAIL = "Email"
 
 
 class InvoiceCol:

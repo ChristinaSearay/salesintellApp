@@ -108,6 +108,27 @@ export default function VisitPage({ params }) {
             <h1 className="font-serif text-[26px] font-semibold leading-[1.1] tracking-[-0.02em] text-balance text-foreground">
               {a.name}
             </h1>
+            {(prep.contact?.name || prep.contact?.phone || prep.contact?.email) && (
+              <div className="mt-1.5 flex flex-col gap-0.5 text-[13px] leading-snug text-muted-foreground">
+                {prep.contact.name && (
+                  <span className="font-medium text-foreground/80">
+                    <span aria-hidden>👤</span> {prep.contact.name}
+                  </span>
+                )}
+                <span className="flex flex-wrap gap-x-3 gap-y-0.5">
+                  {prep.contact.phone && (
+                    <a href={`tel:${prep.contact.phone.replace(/\s+/g, "")}`} className="font-medium text-primary">
+                      <span aria-hidden>📞</span> {prep.contact.phone}
+                    </a>
+                  )}
+                  {prep.contact.email && (
+                    <a href={`mailto:${prep.contact.email}`} className="break-all font-medium text-primary">
+                      <span aria-hidden>✉️</span> {prep.contact.email}
+                    </a>
+                  )}
+                </span>
+              </div>
+            )}
             <div className="mt-2 flex flex-wrap gap-1.5">
               <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${toneCls(a.tone)}`}>
                 {a.status}
@@ -134,15 +155,28 @@ export default function VisitPage({ params }) {
 
       {/* what's going on */}
       <section className="mt-4 rounded-3xl border border-border bg-card p-4 shadow-[0_8px_24px_-18px_rgba(33,29,23,0.5)]">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">What&apos;s going on</h2>
+        <div className="flex items-baseline justify-between gap-2">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">What&apos;s going on</h2>
+          <Link href={`/inbox?code=${code}`} className="text-[12px] font-semibold text-primary">
+            💬 {prep.intelCount > 0 ? `${prep.intelCount} update${prep.intelCount === 1 ? "" : "s"}` : "Add WhatsApp update"}
+          </Link>
+        </div>
+        {prep.intelUpdated && (
+          <p className="mt-1 text-[11px] text-muted-foreground">Latest from WhatsApp · {prep.intelUpdated}</p>
+        )}
         <ul className="mt-3 flex flex-col gap-2.5">
           {prep.highlights.map((h, i) => (
             <li key={i} className="flex items-center gap-3 text-[15px] leading-snug text-foreground">
-              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-secondary text-base" aria-hidden>{h.icon}</span>
+              <span className={`grid size-8 shrink-0 place-items-center rounded-full text-base ${h.live ? "bg-info-soft" : "bg-secondary"}`} aria-hidden>{h.icon}</span>
               <span className="text-pretty">{h.label}</span>
             </li>
           ))}
         </ul>
+        {prep.advice && (
+          <p className="mt-3 rounded-2xl bg-info-soft px-3.5 py-2.5 text-[13px] leading-snug text-info">
+            <span className="font-semibold">Suggested next move: </span>{prep.advice}
+          </p>
+        )}
       </section>
 
       {/* what I've learned */}

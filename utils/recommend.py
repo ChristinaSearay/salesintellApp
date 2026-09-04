@@ -8,8 +8,16 @@ learning always applies.
 from typing import Dict, List, Optional
 
 from constants.customers import TARGET_BY_CODE
+from constants.feedback import ActionKind, IncentiveType
+from constants.intel import (
+    LIVE_CHURN_RETENTION_BOOST,
+    LIVE_CHURN_SELL_DEMOTE,
+    LIVE_OPPORTUNITY_BONUS,
+)
 from constants.recommended_actions import CUSTOMER_KIND
-from utils.candidates import Candidate, build_candidate_pool
+from constants.rfm import RelationshipFlag
+from utils.candidates import Candidate, build_candidate_pool, opportunity_candidates
+from utils.intel import effective_context, latest_update, live_hook_set, load_updates
 from utils.preferences import (
     apply_acceptance,
     apply_rejection,
@@ -32,7 +40,9 @@ def _engine() -> dict:
         profiles = {p.customer.code: p for p in build_profiles()}
         pools = {code: build_candidate_pool(p, catalogue, resolve)
                  for code, p in profiles.items()}
-        _CACHE.update(resolve=resolve, profiles=profiles, pools=pools)
+        groups = sorted({i.group for i in catalogue if i.group})
+        _CACHE.update(resolve=resolve, profiles=profiles, pools=pools,
+                      catalogue=catalogue, groups=groups)
     return _CACHE
 
 
@@ -58,10 +68,71 @@ def _select_diverse(ranked: List[Candidate], n: int) -> List[Candidate]:
     return out
 
 
-def current_actions(code: str, n: int = 3) -> List[Candidate]:
+# --- Live intel (WhatsApp) layered over the cached pool ---------------------
+
+def _live_candidates(code: str) -> List[Candidate]:
+    """Extra candidates derived from saved WhatsApp updates: new opportunity
+    groups the baseline pool doesn't cover, and a 'respond to the terms they
+    asked for' action when an incentive was raised. Computed per request so a
+    freshly saved update changes the pitch set without a restart."""
+    updates = load_updates(code)
+    if not updates:
+        return []
     eng = _engine()
-    profile = load_profile(code)
-    ranked = rank_candidates(eng["pools"][code], profile)
+    prof = eng["profiles"][code]
+    pool = eng["pools"][code]
+    covered = {g for c in pool for g in c.groups}
+    used = {p.code for c in pool for p in c.pitches}
+    latest = updates[-1]
+
+    groups, why = [], ""
+    for u in reversed(updates):
+        for g in u.opportunity_groups:
+            if g not in covered and g not in groups:
+                groups.append(g)
+        if not why and u.hooks:
+            why = "From WhatsApp: " + u.hooks[0]
+    out = opportunity_candidates(code, eng["catalogue"], groups, used, prof.bought_group_names,
+                                 bonus=LIVE_OPPORTUNITY_BONUS, why=why)
+
+    if latest.prior_incentive:
+        out.append(Candidate(
+            id=f"{code}-live-terms-{latest.id}",
+            title="Respond to the terms they asked for",
+            detail=(f"They raised: {latest.prior_incentive}. Come with a position on it — "
+                    "a counter or a clear reason — rather than leaving it hanging."
+                    + (f" {latest.advice}" if latest.advice else "")),
+            kind=ActionKind.STRUCTURAL,
+            incentive_type=IncentiveType.PRICE_MATCH,
+            base_score=80.0,
+            incentive=f"PROPOSED: {latest.prior_incentive}",
+            grounded_in=f"WhatsApp update {latest.ts[:10]}.",
+        ))
+    return out
+
+
+def _live_pool(code: str) -> List[Candidate]:
+    return _engine()["pools"][code] + _live_candidates(code)
+
+
+def _tilt_for_relationship(code: str, profile):
+    """Transient kind-weight tilt when the latest live update flags churn —
+    not persisted, so it lifts as soon as the intel changes."""
+    latest = latest_update(code)
+    if not latest or latest.relationship_flag is not RelationshipFlag.CHURN_RISK:
+        return profile
+    import copy
+    p = copy.deepcopy(profile)
+    for k in (ActionKind.RETENTION, ActionKind.RELATIONSHIP, ActionKind.STRUCTURAL):
+        p.kind_weights[k.name] = p.kind_weights.get(k.name, 1.0) * LIVE_CHURN_RETENTION_BOOST
+    for k in (ActionKind.UPSELL, ActionKind.WHITESPACE):
+        p.kind_weights[k.name] = p.kind_weights.get(k.name, 1.0) * LIVE_CHURN_SELL_DEMOTE
+    return p
+
+
+def current_actions(code: str, n: int = 3) -> List[Candidate]:
+    profile = _tilt_for_relationship(code, load_profile(code))
+    ranked = rank_candidates(_live_pool(code), profile)
     return _select_diverse(ranked, n)
 
 
@@ -93,18 +164,31 @@ def customer_summary(code: str) -> dict:
     eng = _engine()
     p = eng["profiles"][code]
     profile = load_profile(code)
-    flag = p.relationship.value
+    notes = effective_context(code)  # fresh: includes WhatsApp updates saved since start-up
+    relationship = notes.relationship if notes else p.relationship
+    live = live_hook_set(code)
+    latest = latest_update(code)
+    hooks = list(notes.hooks) if notes else []
     return {
         "code": code,
         "name": p.customer.name,
         "segment": p.segment.value,
-        "flag": flag,
-        "flag_key": p.relationship.name,
+        "flag": relationship.value,
+        "flag_key": relationship.name,
         "rfm": p.rfm_code,
         "balance": p.customer.balance_owing,
         "kind": CUSTOMER_KIND.get(code, ""),
-        "hooks": list(p.notes.hooks) if p.notes else [],
-        "next_contact": (p.notes.next_contact if p.notes else "") or "",
+        "contact": {
+            "name": p.contact.name,
+            "phone": p.contact.phone,
+            "email": p.contact.email,
+        },
+        "hooks": hooks,
+        "hook_items": [{"text": h, "live": h in live} for h in hooks],
+        "advice": latest.advice if latest else "",
+        "intel_updated": latest.ts if latest else "",
+        "intel_count": len(load_updates(code)),
+        "next_contact": (notes.next_contact if notes else "") or "",
         "snapshot": (f"{p.frequency} orders · ${p.monetary:,.0f} in 24 months · "
                      f"last order {p.recency_days} days ago"),
         "last_order_days": p.recency_days,
@@ -138,8 +222,7 @@ def submit_feedback(code: str, accepted_ids: List[str], rejections: List[dict],
     """rejections: [{id, reasons:[ReasonName], note}]. Persists, returns the
     refreshed action set."""
     from constants.feedback import RejectionReason  # local import avoids cycle at top
-    eng = _engine()
-    by_id = {c.id: c for c in eng["pools"][code]}
+    by_id = {c.id: c for c in _live_pool(code)}
     profile = load_profile(code)
 
     for acc in accepted_ids or []:
@@ -165,3 +248,13 @@ def reset(code: str, n: int = 3) -> dict:
     from utils.preferences import reset_profile
     reset_profile(code)
     return actions_payload(code, n)
+
+
+# --- Live intel API helpers -------------------------------------------------
+
+def group_names() -> List[str]:
+    return _engine()["groups"]
+
+
+def intel_payload(code: str) -> dict:
+    return {"code": code, "updates": [u.to_dict() for u in load_updates(code)]}

@@ -39,9 +39,20 @@ async function get(url) {
 }
 async function post(url, body) {
   const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
-  if (!r.ok) throw new Error(`${url} → ${r.status}`);
+  if (!r.ok) {
+    let msg = `${url} → ${r.status}`;
+    try { const j = await r.json(); if (j?.error) msg = j.error; } catch {}
+    throw new Error(msg);
+  }
   return r.json();
 }
+const whenPhrase = (iso) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-AU", { day: "numeric", month: "short" }) + " " +
+    d.toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" });
+};
 
 export function toAccount(c) {
   const seg = SEGMENT[c.segment] || { em: "•", label: c.segment, tone: "neutral" };
@@ -69,15 +80,23 @@ function toPitch(a) {
 
 function toPrep(payload) {
   const c = payload.customer;
+  const contact = c.contact || {};
   return {
     code: c.code,
     account: toAccount(c),
+    contact: { name: contact.name || "", phone: contact.phone || "", email: contact.email || "" },
     stats: [
       { label: "Spend · 2yr", value: moneyShort(c.spend) },
       { label: "Last order", value: daysPhrase(c.last_order_days) },
       { label: "Orders · 2yr", value: String(c.orders) },
     ],
-    highlights: (c.hooks || []).slice(0, 3).map((h) => ({ icon: "✦", label: h })),
+    // Live WhatsApp bullets come first (tagged), then the meeting-notes baseline.
+    highlights: (c.hook_items || (c.hooks || []).map((h) => ({ text: h, live: false })))
+      .slice(0, 5)
+      .map((h) => ({ icon: h.live ? "💬" : "✦", label: h.text, live: !!h.live })),
+    advice: c.advice || "",
+    intelUpdated: whenPhrase(c.intel_updated),
+    intelCount: c.intel_count || 0,
     story: c.kind || "",
     nextContact: c.next_contact || "",
     topGroups: c.top_groups || [],
@@ -96,4 +115,10 @@ export const api = {
   sendFeedback: async (code, accepted, rejections) =>
     toPrep(await post(`/api/customer/${code}/feedback`, { accepted, rejections })),
   reset: async (code) => toPrep(await post(`/api/customer/${code}/reset`, {})),
+  // Live intel (WhatsApp dumps → summarised updates)
+  summarise: async (text) => (await post("/api/intel/summarise", { text, source: "whatsapp" })).proposals,
+  getIntel: async (code) => (await get(`/api/intel/${code}`)).updates,
+  saveIntel: async (code, proposal) => toPrep(await post(`/api/intel/${code}`, proposal)),
+  deleteIntel: async (code, id) => toPrep(await post(`/api/intel/${code}/delete`, { id })),
 };
+export { whenPhrase };

@@ -11,16 +11,18 @@ from datetime import date
 from typing import Dict, List, Optional
 
 from constants.columns import (
+    CustomerCol,
     InvoiceCol,
     SalesCol,
     SalesStatus,
 )
 from constants.config import ANCHOR_DATE
 from constants.customers import TARGET_BY_CODE, TARGET_CODES, TargetCustomer
-from constants.meeting_notes import MEETING_NOTES, MeetingContext
+from constants.meeting_notes import MeetingContext
+from utils.intel import effective_context
 from constants.products import EXCLUDED_GROUPS, EXCLUDED_PRODUCT_CODES, canonical_group
 from constants.rfm import RelationshipFlag, Segment
-from utils.datasource import invoice_rows, sales_rows
+from utils.datasource import customer_rows, invoice_rows, sales_rows
 from utils.products import (
     CatalogueItem,
     load_catalogue,
@@ -37,6 +39,16 @@ class BoughtGroup:
     name: str
     lines: int
     spend: float
+
+
+@dataclass(frozen=True)
+class ContactInfo:
+    name: str = ""
+    phone: str = ""
+    email: str = ""
+
+    def __bool__(self) -> bool:
+        return bool(self.name or self.phone or self.email)
 
 
 @dataclass
@@ -63,6 +75,7 @@ class CustomerProfile:
     new_in_bought_backorder: List[CatalogueItem] = field(default_factory=list)
     whitespace_groups: List[BoughtGroup] = field(default_factory=list)  # group + #new in-stock + value
     new_since_count: int = 0
+    contact: ContactInfo = field(default_factory=ContactInfo)
 
     @property
     def rfm_code(self) -> str:
@@ -110,6 +123,42 @@ def _bought_groups(sales_rows) -> List[BoughtGroup]:
     return sorted(groups, key=lambda g: (-g.spend, -g.lines, g.name))
 
 
+def _customer_master() -> Dict[str, dict]:
+    """Customer-master rows keyed by code (Unleashed sync only; {} on CSV)."""
+    return {
+        (row.get(CustomerCol.CODE) or "").strip(): row
+        for row in customer_rows()
+        if (row.get(CustomerCol.CODE) or "").strip() in TARGET_CODES
+    }
+
+
+def _contact(s_rows, master_row: Optional[dict]) -> ContactInfo:
+    """The customer's contact card. Baseline: per field, the value on the most
+    recent order that filled it in (orders can list several people — e.g.
+    Class A alternates Brad / accounts / Sam — so fields are resolved
+    independently). The customer master from the Unleashed sync, when present,
+    overrides field-by-field, preferring mobile over landline."""
+    name = phone = email = ""
+    dated = sorted(
+        s_rows,
+        key=lambda r: parse_date(r.get(SalesCol.ORDER_DATE)) or date.min,
+        reverse=True,
+    )
+    for row in dated:
+        name = name or (row.get(SalesCol.CONTACT_NAME) or "").strip()
+        phone = phone or (row.get(SalesCol.CONTACT_PHONE) or "").strip()
+        email = email or (row.get(SalesCol.CONTACT_EMAIL) or "").strip()
+        if name and phone and email:
+            break
+    if master_row:
+        name = (master_row.get(CustomerCol.CONTACT_NAME) or "").strip() or name
+        master_phone = ((master_row.get(CustomerCol.MOBILE) or "").strip()
+                        or (master_row.get(CustomerCol.PHONE) or "").strip())
+        phone = master_phone or phone
+        email = (master_row.get(CustomerCol.EMAIL) or "").strip() or email
+    return ContactInfo(name=name, phone=phone, email=email)
+
+
 def _product_order_codes(sales_rows) -> set:
     """Distinct order numbers that include at least one real product line."""
     orders = set()
@@ -127,6 +176,7 @@ def build_profiles() -> List[CustomerProfile]:
     catalogue = load_catalogue(master)
     sales = _bucket_sales()
     invoices = _bucket_invoices()
+    contact_master = _customer_master()
 
     profiles: List[CustomerProfile] = []
     for code, customer in TARGET_BY_CODE.items():
@@ -151,7 +201,7 @@ def build_profiles() -> List[CustomerProfile]:
         f = score_frequency(frequency)
         m = score_monetary(monetary)
         segment = rfm_segment(r, f)
-        notes = MEETING_NOTES.get(code)
+        notes = effective_context(code)  # meeting notes + live WhatsApp intel
         relationship = notes.relationship if notes else RelationshipFlag.NONE
 
         # --- Product analysis ---
@@ -192,6 +242,7 @@ def build_profiles() -> List[CustomerProfile]:
             new_in_bought_backorder=new_backorder,
             whitespace_groups=whitespace,
             new_since_count=len(fresh),
+            contact=_contact(s_rows, contact_master.get(code)),
         ))
     # Keep the brief's ordering.
     order = {c: i for i, c in enumerate(TARGET_BY_CODE)}

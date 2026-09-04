@@ -18,7 +18,6 @@ from constants.feedback import (
     PriceBand,
     price_band,
 )
-from constants.meeting_notes import MEETING_NOTES
 from constants.recommended_actions import RECOMMENDED_ACTIONS, Pitch
 from utils.products import (
     CatalogueItem,
@@ -32,6 +31,7 @@ Resolver = Callable[[str], Tuple[str, Optional[float], Optional[str]]]
 MAX_UPSELL = 6
 MAX_WHITESPACE = 6
 MAX_OPPORTUNITY = 4
+OPPORTUNITY_PER_GROUP = 2
 CAP_PER_GROUP = 2  # at most this many auto candidates from any one group (variety)
 
 
@@ -219,20 +219,41 @@ def build_candidate_pool(profile, catalogue: List[CatalogueItem], resolve: Resol
 
     # Meeting-notes opportunities (gives recently-ordered customers depth too).
     # Draw PER opportunity group so one busy group can't starve the others.
-    notes = MEETING_NOTES.get(code)
+    notes = profile.notes
     if notes and notes.opportunity_groups:
         for group in notes.opportunity_groups:
-            opp = newest_in_groups(catalogue, [group], limit=4, in_stock_only=True)
-            taken = 0
-            for item in _dedup_by_code(opp, used_products):
-                if taken >= 2 or not can_add(item.group):
-                    break
-                pool.append(_opportunity_candidate(code, item, item.group in bought))
-                used_products.add(item.code)
-                note_group(item.group)
-                taken += 1
+            if not can_add(group):
+                continue
+            taken = opportunity_candidates(code, catalogue, [group], used_products, bought)
+            for c in taken:
+                pool.append(c)
+                note_group(c.groups[0])
 
     return pool
+
+
+def opportunity_candidates(code: str, catalogue: List[CatalogueItem], groups, used_products: set,
+                           bought, bonus: float = 0.0, why: str = "") -> List[Candidate]:
+    """Up to OPPORTUNITY_PER_GROUP newest in-stock items per group, as
+    opportunity candidates. Mutates `used_products`. Used for meeting-notes
+    groups at pool-build time and for live WhatsApp groups per request."""
+    out: List[Candidate] = []
+    for group in groups:
+        opp = newest_in_groups(catalogue, [group], limit=4, in_stock_only=True)
+        taken = 0
+        for item in _dedup_by_code(opp, used_products):
+            if taken >= OPPORTUNITY_PER_GROUP:
+                break
+            c = _opportunity_candidate(code, item, item.group in bought)
+            if bonus or why:
+                c = Candidate(**{**c.__dict__, "base_score": c.base_score + bonus,
+                                 "title": f"From the latest WhatsApp update: {item.group}",
+                                 "detail": (why or c.detail),
+                                 "grounded_in": "Live WhatsApp intel opportunity group + live stock."})
+            out.append(c)
+            used_products.add(item.code)
+            taken += 1
+    return out
 
 
 def _dedup_by_code(items: List[CatalogueItem], used: set) -> List[CatalogueItem]:

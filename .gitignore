@@ -65,6 +65,8 @@ reports/
 
 # Per-customer learned preferences (runtime state from the rep feedback loop)
 feedback/
+# Per-customer live intel (summarised WhatsApp updates)
+notes/
 
 # Logs
 *.log

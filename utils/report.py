@@ -60,6 +60,9 @@ def render(profile: CustomerProfile, actions, resolve: Resolver) -> str:
 
     out = []
     out.append(f"# Sales Action Report — {p.customer.name} (`{p.customer.code}`)")
+    if p.contact:
+        parts = [x for x in (p.contact.name, p.contact.phone, p.contact.email) if x]
+        out.append(f"**Contact:** {' · '.join(parts)}  ")
     out.append(
         f"*Snapshot: Unleashed exports as of {ANCHOR_DATE:%d %b %Y}. "
         f"POC — recommended actions are proposals pending head-office approval.*"

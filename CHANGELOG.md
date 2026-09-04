@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-09-04
+
+### Added
+- Customer contact card (contact name · phone · email) under the company name on the visit page, in the API (`customer_summary.contact`) and in the Markdown report header — derived from the Unleashed sales export's per-order contact columns (most recent order wins, per field).
+- `uv run sync` now also pulls the Unleashed Customers endpoint into `data/customers.json` (`CustomerCol`, mappings marked VERIFY); when present it overrides the order-row contact field-by-field, preferring mobile over landline.
+
+## 2026-08-30
+
+### Added
+- WhatsApp intel loop: paste a team-chat dump in the new `/inbox` screen → Claude summarises it into per-customer updates (customer match incl. "not one of ours", hooks, product groups to pitch, terms asked for, relationship signal, next move) → rep confirms → saved to `notes/<code>.json` (`utils/intel.py`, `utils/summariser.py`, `constants/intel.py`).
+- Saved updates feed "What's going on" (live bullets first, tagged 💬, with a "Suggested next move" line), the relationship flag, the Markdown reports, and the pitch set: new opportunity candidates for groups raised in chat, a "Respond to the terms they asked for" action when a deal was requested, and a retention tilt when the update flags churn.
+- API: `POST /api/intel/summarise`, `GET/POST /api/intel/<code>`, `POST /api/intel/<code>/delete`; `ANTHROPIC_API_KEY` / `SEARAY_INTEL_MODEL` / `SEARAY_NOTES_DIR` env vars; "💬 WhatsApp" entry on the accounts screen and an updates link on each visit page.
+
+### Changed
+- `anthropic` SDK added as the one third-party dependency (summariser only; engine stays stdlib).
+- Profiles and candidate pools read meeting-notes context via `utils.intel.effective_context()` instead of `MEETING_NOTES` directly.
+
 ## 2026-06-19
 
 ### Removed

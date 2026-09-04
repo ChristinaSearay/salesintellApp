@@ -49,3 +49,15 @@ def sales_rows() -> list:
 
 def invoice_rows() -> list:
     return _rows("invoices.json", INVOICE_FILE)
+
+
+def customer_rows() -> list:
+    """Customer-master rows (contact name/phone/mobile/email). Unleashed sync
+    only — there is no customers CSV export — and optional even there (older
+    caches predate it), so missing data means [] rather than an error."""
+    if not _using_unleashed:
+        return []
+    try:
+        return _cache("customers.json")
+    except RuntimeError:
+        return []

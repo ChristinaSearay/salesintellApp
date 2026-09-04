@@ -3,8 +3,10 @@ name = "searay-sales-intelligence"
 version = "0.1.0"
 description = "Searay Sales Intelligence POC — RFM + upsell reports and a rep-facing rule-based learning loop"
 requires-python = ">=3.11"
-# Standard library only — no third-party dependencies. Add new ones with `uv add`.
-dependencies = []
+# Engine is stdlib; `anthropic` is used only by the WhatsApp summariser (utils/summariser.py).
+dependencies = [
+    "anthropic>=1.2.0",
+]
 
 [project.scripts]
 app = "app:main"

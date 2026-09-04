@@ -4,6 +4,7 @@
 // (api.getAccounts() → /api proxy → Python).
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { api } from "@/lib/api";
 import AccountCard from "@/components/AccountCard";
 
@@ -26,9 +27,12 @@ export default function AccountsPage() {
           <span className="text-[13px] font-semibold uppercase tracking-[0.18em] text-primary">
             Searay
           </span>
-          <span className="grid size-9 place-items-center rounded-full bg-card text-sm font-semibold text-foreground ring-1 ring-border">
-            SR
-          </span>
+          <Link
+            href="/inbox"
+            className="flex h-9 items-center gap-1.5 rounded-full bg-card px-3.5 text-[13px] font-semibold text-foreground ring-1 ring-border transition active:scale-95"
+          >
+            <span aria-hidden>💬</span> WhatsApp
+          </Link>
         </div>
 
         <h1 className="mt-7 font-serif text-[34px] font-semibold leading-[1.05] tracking-[-0.02em] text-balance text-foreground">

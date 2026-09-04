@@ -13,6 +13,10 @@ API:
   GET  /api/customer/<code>              -> customer + current 3 actions
   POST /api/customer/<code>/feedback     -> {accepted:[id], rejections:[{id,reasons,note}]}
   POST /api/customer/<code>/reset        -> clear that customer's learning
+  POST /api/intel/summarise              -> {text, source?} -> proposed updates (not saved)
+  GET  /api/intel/<code>                 -> saved live updates for a customer
+  POST /api/intel/<code>                 -> save one update (body = a proposal) -> refreshed prep
+  POST /api/intel/<code>/delete          -> {id} -> refreshed prep
 """
 import json
 import os
@@ -22,7 +26,17 @@ from urllib.parse import urlparse
 from constants.config import DEFAULT_PORT
 from constants.customers import TARGET_CODES
 from constants.feedback import RejectionReason
-from utils.recommend import actions_payload, customer_list, reset, submit_feedback
+from constants.intel import IntelSource
+from utils.intel import IntelUpdate, add_update, delete_update
+from utils.recommend import (
+    actions_payload,
+    customer_list,
+    group_names,
+    intel_payload,
+    reset,
+    submit_feedback,
+)
+from utils.summariser import summarise
 
 PORT = int(os.environ.get("PORT", str(DEFAULT_PORT)))
 
@@ -86,11 +100,20 @@ class Handler(BaseHTTPRequestHandler):
         if len(parts) == 3 and parts[0] == "api" and parts[1] == "customer":
             code = self._code_from(parts)
             return self._json(actions_payload(code)) if code else self.send_error(404)
+        if len(parts) == 3 and parts[0] == "api" and parts[1] == "intel":
+            code = self._code_from(parts)
+            return self._json(intel_payload(code)) if code else self.send_error(404)
         self.send_error(404)
+
+    def _read_body(self):
+        length = int(self.headers.get("Content-Length", 0) or 0)
+        return json.loads(self.rfile.read(length) or b"{}")
 
     def do_POST(self):
         path = urlparse(self.path).path
         parts = path.strip("/").split("/")
+        if len(parts) >= 2 and parts[0] == "api" and parts[1] == "intel":
+            return self._post_intel(parts)
         if len(parts) == 4 and parts[0] == "api" and parts[1] == "customer":
             code = self._code_from(parts)
             if not code:
@@ -108,6 +131,35 @@ class Handler(BaseHTTPRequestHandler):
                     return self._json(reset(code))
             except Exception as exc:  # never 500 silently in a demo
                 return self._json({"error": str(exc)}, status=500)
+        self.send_error(404)
+
+    def _post_intel(self, parts):
+        try:
+            body = self._read_body()
+        except json.JSONDecodeError:
+            return self._json({"error": "bad json"}, status=400)
+        try:
+            if len(parts) == 3 and parts[2] == "summarise":
+                text = (body.get("text") or "").strip()
+                if not text:
+                    return self._json({"error": "no text"}, status=400)
+                source = IntelSource(body.get("source") or IntelSource.WHATSAPP.value)
+                proposals = summarise(text, group_names(), source)
+                return self._json({"proposals": [u.to_dict() for u in proposals]})
+            code = self._code_from(parts)
+            if not code:
+                return self.send_error(404)
+            if len(parts) == 3:
+                body["customer_code"] = code
+                add_update(IntelUpdate.from_dict(body))
+                return self._json(actions_payload(code))
+            if len(parts) == 4 and parts[3] == "delete":
+                delete_update(code, body.get("id", ""))
+                return self._json(actions_payload(code))
+        except RuntimeError as exc:  # summariser not configured / API failure
+            return self._json({"error": str(exc)}, status=503)
+        except Exception as exc:  # never 500 silently in a demo
+            return self._json({"error": str(exc)}, status=500)
         self.send_error(404)
 
 
