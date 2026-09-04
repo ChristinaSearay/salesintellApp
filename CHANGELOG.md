@@ -6,6 +6,10 @@
 - Customer contact card (contact name · phone · email) under the company name on the visit page, in the API (`customer_summary.contact`) and in the Markdown report header — derived from the Unleashed sales export's per-order contact columns (most recent order wins, per field).
 - `uv run sync` now also pulls the Unleashed Customers endpoint into `data/customers.json` (`CustomerCol`, mappings marked VERIFY); when present it overrides the order-row contact field-by-field, preferring mobile over landline.
 
+### Fixed
+- `parse_money`/`parse_number` accept JSON numbers, so the engine runs on the Unleashed sync cache (first live sync stored numeric fields as numbers, not strings).
+- AU mobiles stored in Unleashed without their leading 0 (e.g. `437447787`) are normalised to `0437 447 787` for display and tel: links (`utils/parsing.py:normalise_phone`).
+
 ## 2026-08-30
 
 ### Added

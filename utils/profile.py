@@ -30,7 +30,7 @@ from utils.products import (
     new_since,
     rank_items,
 )
-from utils.parsing import days_between, parse_date, parse_money
+from utils.parsing import days_between, normalise_phone, parse_date, parse_money
 from utils.rfm import rfm_segment, score_frequency, score_monetary, score_recency
 
 
@@ -152,8 +152,8 @@ def _contact(s_rows, master_row: Optional[dict]) -> ContactInfo:
             break
     if master_row:
         name = (master_row.get(CustomerCol.CONTACT_NAME) or "").strip() or name
-        master_phone = ((master_row.get(CustomerCol.MOBILE) or "").strip()
-                        or (master_row.get(CustomerCol.PHONE) or "").strip())
+        master_phone = (normalise_phone(master_row.get(CustomerCol.MOBILE))
+                        or normalise_phone(master_row.get(CustomerCol.PHONE)))
         phone = master_phone or phone
         email = (master_row.get(CustomerCol.EMAIL) or "").strip() or email
     return ContactInfo(name=name, phone=phone, email=email)
