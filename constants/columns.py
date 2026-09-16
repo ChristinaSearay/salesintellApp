@@ -24,6 +24,7 @@ class CustomerCol:
     """Customers cache (data/customers.json) — Unleashed sync only; there is no
     matching CSV export, so CSV mode falls back to the order-row contact."""
     CODE = "Customer Code"
+    NAME = "Customer Name"
     CONTACT_NAME = "Contact Name"
     PHONE = "Phone"
     MOBILE = "Mobile"

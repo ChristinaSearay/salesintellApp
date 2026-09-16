@@ -7,7 +7,6 @@ learning always applies.
 """
 from typing import Dict, List, Optional
 
-from constants.customers import TARGET_BY_CODE
 from constants.feedback import ActionKind, IncentiveType
 from constants.intel import (
     LIVE_CHURN_RETENTION_BOOST,
@@ -190,7 +189,8 @@ def customer_summary(code: str) -> dict:
         "intel_count": len(load_updates(code)),
         "next_contact": (notes.next_contact if notes else "") or "",
         "snapshot": (f"{p.frequency} orders · ${p.monetary:,.0f} in 24 months · "
-                     f"last order {p.recency_days} days ago"),
+                     + (f"last order {p.recency_days} days ago" if p.recency_days is not None
+                        else "no orders on record")),
         "last_order_days": p.recency_days,
         "orders": p.frequency,
         "spend": p.monetary,
@@ -199,8 +199,31 @@ def customer_summary(code: str) -> dict:
     }
 
 
+def is_known_customer(code: str) -> bool:
+    return code in _engine()["profiles"]
+
+
+def account_card(code: str) -> dict:
+    """Lean list-row view of a customer (the full summary is per-visit)."""
+    p = _engine()["profiles"][code]
+    notes = effective_context(code)
+    relationship = notes.relationship if notes else p.relationship
+    return {
+        "code": code,
+        "name": p.customer.name,
+        "segment": p.segment.value,
+        "flag": relationship.value,
+        "flag_key": relationship.name,
+        "balance": p.customer.balance_owing,
+        "spend": p.monetary,
+        "orders": p.frequency,
+        "last_order_days": p.recency_days,
+    }
+
+
 def customer_list() -> List[dict]:
-    return [customer_summary(code) for code in TARGET_BY_CODE]
+    """Every active customer, biggest 24-month spend first."""
+    return [account_card(code) for code in _engine()["profiles"]]
 
 
 def actions_payload(code: str, n: int = 3) -> dict:

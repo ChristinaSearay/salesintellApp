@@ -8,7 +8,7 @@ for the future tool to attach rep feedback / preferences.
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date
-from typing import Dict, List, Optional
+from typing import Dict, Iterable, List, Optional
 
 from constants.columns import (
     CustomerCol,
@@ -17,11 +17,12 @@ from constants.columns import (
     SalesStatus,
 )
 from constants.config import ANCHOR_DATE
-from constants.customers import TARGET_BY_CODE, TARGET_CODES, TargetCustomer
+from constants.customers import Customer
 from constants.meeting_notes import MeetingContext
 from utils.intel import effective_context
 from constants.products import EXCLUDED_GROUPS, EXCLUDED_PRODUCT_CODES, canonical_group
 from constants.rfm import RelationshipFlag, Segment
+from utils.customers import load_customers
 from utils.datasource import customer_rows, invoice_rows, sales_rows
 from utils.products import (
     CatalogueItem,
@@ -53,7 +54,7 @@ class ContactInfo:
 
 @dataclass
 class CustomerProfile:
-    customer: TargetCustomer
+    customer: Customer
     # RFM inputs
     last_order_date: Optional[date]
     last_invoice_date: Optional[date]
@@ -76,6 +77,7 @@ class CustomerProfile:
     whitespace_groups: List[BoughtGroup] = field(default_factory=list)  # group + #new in-stock + value
     new_since_count: int = 0
     contact: ContactInfo = field(default_factory=ContactInfo)
+    bought_product_codes: frozenset = frozenset()  # every product code on their orders
 
     @property
     def rfm_code(self) -> str:
@@ -86,23 +88,23 @@ class CustomerProfile:
         return {g.name for g in self.bought_groups}
 
 
-def _bucket_sales():
-    """One pass over the sales file -> {code: [rows]} for the targets only."""
+def _bucket_sales(codes: frozenset):
+    """One pass over the sales file -> {code: [rows]} for the wanted customers."""
     buckets: Dict[str, list] = defaultdict(list)
     for row in sales_rows():
         if row.get(SalesCol.STATUS) != SalesStatus.COMPLETED:
             continue  # skips the stray 'Totals' footer too
         code = (row.get(SalesCol.CUSTOMER_CODE) or "").strip()
-        if code in TARGET_CODES:
+        if code in codes:
             buckets[code].append(row)
     return buckets
 
 
-def _bucket_invoices():
+def _bucket_invoices(codes: frozenset):
     buckets: Dict[str, list] = defaultdict(list)
     for row in invoice_rows():
         code = (row.get(InvoiceCol.CUSTOMER_CODE) or "").strip()
-        if code in TARGET_CODES:
+        if code in codes:
             buckets[code].append(row)
     return buckets
 
@@ -123,12 +125,12 @@ def _bought_groups(sales_rows) -> List[BoughtGroup]:
     return sorted(groups, key=lambda g: (-g.spend, -g.lines, g.name))
 
 
-def _customer_master() -> Dict[str, dict]:
+def _customer_master(codes: frozenset) -> Dict[str, dict]:
     """Customer-master rows keyed by code (Unleashed sync only; {} on CSV)."""
     return {
         (row.get(CustomerCol.CODE) or "").strip(): row
         for row in customer_rows()
-        if (row.get(CustomerCol.CODE) or "").strip() in TARGET_CODES
+        if (row.get(CustomerCol.CODE) or "").strip() in codes
     }
 
 
@@ -171,15 +173,21 @@ def _product_order_codes(sales_rows) -> set:
     return orders
 
 
-def build_profiles() -> List[CustomerProfile]:
+def build_profiles(codes: Optional[Iterable[str]] = None) -> List[CustomerProfile]:
+    """Profiles for `codes` (in that order), or for every active customer
+    (biggest 24-month spend first) when `codes` is None."""
+    directory = load_customers()
+    wanted = list(directory) if codes is None else [c for c in codes if c in directory]
+    wanted_set = frozenset(wanted)
     master = load_product_master()
     catalogue = load_catalogue(master)
-    sales = _bucket_sales()
-    invoices = _bucket_invoices()
-    contact_master = _customer_master()
+    sales = _bucket_sales(wanted_set)
+    invoices = _bucket_invoices(wanted_set)
+    contact_master = _customer_master(wanted_set)
 
     profiles: List[CustomerProfile] = []
-    for code, customer in TARGET_BY_CODE.items():
+    for code in wanted:
+        customer = directory[code]
         s_rows = sales.get(code, [])
         i_rows = invoices.get(code, [])
 
@@ -243,8 +251,9 @@ def build_profiles() -> List[CustomerProfile]:
             whitespace_groups=whitespace,
             new_since_count=len(fresh),
             contact=_contact(s_rows, contact_master.get(code)),
+            bought_product_codes=frozenset(
+                c for c in ((r.get(SalesCol.PRODUCT_CODE) or "").strip() for r in s_rows) if c),
         ))
-    # Keep the brief's ordering.
-    order = {c: i for i, c in enumerate(TARGET_BY_CODE)}
-    profiles.sort(key=lambda p: order[p.customer.code])
+    if codes is None:
+        profiles.sort(key=lambda p: (-p.monetary, p.customer.name))
     return profiles

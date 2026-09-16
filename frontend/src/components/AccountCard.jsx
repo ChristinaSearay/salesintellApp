@@ -1,13 +1,17 @@
 import Link from "next/link";
 import { toneCls } from "@/lib/ui";
 
+// Only the first few cards stagger in; the rest appear with them.
+const STAGGER_MS = 70;
+const STAGGER_MAX = 8;
+
 export default function AccountCard({ account: a, index = 0 }) {
   const flagged = a.alerts?.some((al) => al.tone === "danger");
 
   return (
     <Link
       href={`/visit/${a.code}`}
-      style={{ animationDelay: `${index * 70}ms` }}
+      style={{ animationDelay: `${Math.min(index, STAGGER_MAX) * STAGGER_MS}ms` }}
       className="animate-rise group relative block overflow-hidden rounded-3xl border border-border bg-card p-4 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_8px_24px_-16px_rgba(33,29,23,0.45)] transition active:scale-[0.985]"
     >
       {/* warm gold edge that hints "needs attention" */}
@@ -22,6 +26,7 @@ export default function AccountCard({ account: a, index = 0 }) {
           <h3 className="truncate font-serif text-[19px] font-semibold leading-tight tracking-[-0.01em] text-foreground">
             {a.name}
           </h3>
+          {a.meta && <p className="mt-0.5 truncate text-[12px] text-muted-foreground">{a.meta}</p>}
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${toneCls(a.tone)}`}>
               {a.status}

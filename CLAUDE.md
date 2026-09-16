@@ -11,7 +11,7 @@ uv-managed, standard library plus the `anthropic` SDK (used only by `utils/summa
 ```bash
 uv sync                            # create/refresh .venv
 uv run python analyze.py           # RFM scorecard + upsell matching to stdout (writes nothing)
-uv run python build_reports.py     # write reports/<code> - <name>.md for all 5 customers
+uv run python build_reports.py     # write reports/<code> - <name>.md for the 5 POC customers
 uv run app                         # JSON API engine on :8000 (override with PORT)
 cd frontend && pnpm dev            # rep UI (Next.js, v0 design) on :3000 — needs the engine
 ```
@@ -31,9 +31,12 @@ Both `build_reports.py` and `server.py` get a customer's current top-3 from `cur
 - Live intel (`utils/intel.py`, `notes/<code>.json`) is also read fresh every call: `effective_context(code)` layers summarised WhatsApp updates over `MEETING_NOTES` (hooks, opportunity groups, relationship flag, prior incentive); `recommend._live_candidates()` adds per-request candidates for new groups / requested terms and `_tilt_for_relationship()` re-weights on churn. The summariser (`utils/summariser.py`, Claude with a JSON-schema output, needs `ANTHROPIC_API_KEY`) only *proposes*; nothing is saved until the rep confirms in `/inbox`.
 - The per-customer `PreferenceProfile` is loaded **fresh every call** from `feedback/<code>.json` → rep feedback takes effect immediately in the GUI, and in reports on the next `build_reports.py`. This is how learning "feeds back into reports."
 
+### Customer scope
+The app covers **every active customer** (completed order or invoice in the data) via `utils/customers.py:load_customers()`, sorted by 24-month spend. The five POC customers in `constants/customers.py` (`TARGET_CUSTOMERS`) keep curated names, manual balances, meeting notes and seed actions, and remain the scope of `analyze.py` / `build_reports.py` (pass codes to `build_profiles(codes)`); everyone else runs on the auto-generated candidates only.
+
 ### Recommendation pipeline (read these four together)
 1. `utils/profile.py` — `CustomerProfile`: RFM scores + segment + relationship flag + bought groups + upsell matches, assembled from the 4 CSVs.
-2. `utils/candidates.py` — the `Candidate` pool = curated seed actions (`constants/recommended_actions.py`) + auto-generated upsell / white-space / meeting-notes items, each tagged with `kind`, `incentive_type`, `price_point`.
+2. `utils/candidates.py` — the `Candidate` pool = curated seed actions (`constants/recommended_actions.py`) + auto-generated upsell / white-space / meeting-notes items (plus a "newest in a range they buy" top-up when the pool is below `MIN_AUTO_POOL`), each tagged with `kind`, `incentive_type`, `price_point`.
 3. `utils/preferences.py` — the learning. `apply_rejection()` maps a `RejectionReason` (`constants/feedback.py`) to deterministic effects (price ceiling, group exclusion, no-discounts, action-kind re-weighting). `rank_candidates()` scores the pool; **accepted candidates bypass all filters and are pinned to the top.**
 4. `utils/recommend.py` — ranks, enforces group-diversity (max one card per product group in a shown set of 3), and serialises for the API.
 

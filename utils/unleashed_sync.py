@@ -106,6 +106,7 @@ def map_customers(customers: list) -> list:
         last = (c.get("ContactLastName") or "").strip()       # VERIFY
         rows.append({
             CustomerCol.CODE: c.get("CustomerCode", ""),
+            CustomerCol.NAME: c.get("CustomerName", "") or "",
             CustomerCol.CONTACT_NAME: " ".join(x for x in (first, last) if x),
             CustomerCol.PHONE: c.get("PhoneNumber", "") or "",   # VERIFY
             CustomerCol.MOBILE: c.get("MobileNumber", "") or "", # VERIFY

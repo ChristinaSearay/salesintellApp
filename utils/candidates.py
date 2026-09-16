@@ -33,6 +33,11 @@ MAX_WHITESPACE = 6
 MAX_OPPORTUNITY = 4
 OPPORTUNITY_PER_GROUP = 2
 CAP_PER_GROUP = 2  # at most this many auto candidates from any one group (variety)
+# Frequent buyers have (almost) nothing "new since last order", so when the pool
+# is thin, top it up with the newest in-stock items in their bought groups.
+MIN_AUTO_POOL = 9           # enough for the first set + two "fresh pitches" rounds
+MAX_LATEST_IN_RANGE = 6
+LATEST_IN_RANGE_PENALTY = 4.0  # ranks just below a genuine new-since-last-order upsell
 
 
 @dataclass
@@ -157,6 +162,23 @@ def _whitespace_candidate(code: str, group: str, rep: CatalogueItem, count: int)
     )
 
 
+def _latest_in_range_candidate(code: str, item: CatalogueItem) -> Candidate:
+    added = f" (added {item.created_on:%d %b %Y})" if item.created_on else ""
+    return Candidate(
+        id=f"{code}-latest-{item.code}",
+        title=f"Newest in a range they buy: {item.group}",
+        detail=(f"They buy {item.group} regularly. This is our newest in-stock piece in "
+                f"that range{added} and it isn't on any of their orders yet."),
+        kind=ActionKind.UPSELL,
+        incentive_type=IncentiveType.NONE,
+        base_score=KIND_BASE_SCORE[ActionKind.UPSELL] - LATEST_IN_RANGE_PENALTY,
+        pitches=(Pitch(item.code, "newest in stock in a group they already buy"),),
+        groups=(item.group,),
+        grounded_in="Range engine: newest in-stock item in a bought group, never ordered by them.",
+        price_point=item.sell_price,
+    )
+
+
 def _opportunity_candidate(code: str, item: CatalogueItem, in_bought: bool) -> Candidate:
     kind = ActionKind.UPSELL if in_bought else ActionKind.WHITESPACE
     return Candidate(
@@ -228,6 +250,23 @@ def build_candidate_pool(profile, catalogue: List[CatalogueItem], resolve: Resol
             for c in taken:
                 pool.append(c)
                 note_group(c.groups[0])
+
+    # Latest-in-range top-up for thin pools (one per bought group, by spend).
+    if len(pool) < MIN_AUTO_POOL:
+        skip = used_products | profile.bought_product_codes
+        added = 0
+        for g in profile.bought_groups:
+            if added >= MAX_LATEST_IN_RANGE or len(pool) >= MIN_AUTO_POOL:
+                break
+            if not can_add(g.name):
+                continue
+            items = _dedup_by_code(newest_in_groups(catalogue, [g.name], limit=10, in_stock_only=True), skip)
+            if not items:
+                continue
+            pool.append(_latest_in_range_candidate(code, items[0]))
+            used_products.add(items[0].code)
+            note_group(g.name)
+            added += 1
 
     return pool
 

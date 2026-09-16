@@ -61,7 +61,18 @@ export function toAccount(c) {
   if (flag) alerts.push({ icon: flag.icon, label: flag.label, tone: flag.tone });
   if (c.balance > 0) alerts.push({ icon: "💰", label: `Owes ${money(c.balance)}`, tone: "danger" });
   // Shape matches v0's components: status as a string + a top-level tone.
-  return { code: c.code, name: c.name, emoji: seg.em, status: seg.label, tone: seg.tone, alerts };
+  const meta = [
+    c.spend != null ? `${moneyShort(c.spend)} · 2yr` : "",
+    c.last_order_days != null ? `last order ${daysPhrase(c.last_order_days)}` : "",
+  ].filter(Boolean).join(" · ");
+  return { code: c.code, name: c.name, emoji: seg.em, status: seg.label, tone: seg.tone, alerts, meta };
+}
+
+// Case-insensitive match on customer name or code (accounts search).
+export function matchesAccount(account, query) {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  return account.name.toLowerCase().includes(q) || account.code.toLowerCase().includes(q);
 }
 
 function toPitch(a) {

@@ -7,6 +7,7 @@ import os
 import re
 
 from constants.config import REPORTS_DIR
+from constants.customers import TARGET_BY_CODE
 from utils.products import load_catalogue, load_product_master, make_resolver
 from utils.profile import build_profiles
 from utils.recommend import current_actions
@@ -21,7 +22,7 @@ def main() -> None:
     master = load_product_master()
     catalogue = load_catalogue(master)
     resolve = make_resolver(master, catalogue)
-    profiles = build_profiles()
+    profiles = build_profiles(TARGET_BY_CODE)
 
     os.makedirs(REPORTS_DIR, exist_ok=True)
     written = []

@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-09-16
+
+### Added
+- All active Unleashed customers (anyone with a completed order or invoice in the 24-month window — 567 on the 4 Sep sync) are in the app, each with RFM, contact card and pitches (`utils/customers.py:load_customers`).
+- Accounts screen search by customer name or code; shows the top 30 by spend until you search; each card shows 2-year spend and last order.
+- `uv run sync` now stores the customer name from the Customers endpoint (`CustomerCol.NAME`).
+- "Newest in a range they buy" pitches: when a customer's candidate pool is thin (frequent buyers with nothing new since their last order), it is topped up with the newest in-stock item per bought group that they have never ordered.
+
+### Changed
+- `GET /api/customers` returns lean account cards for every active customer, biggest spend first; customer/intel endpoints accept any active customer code.
+- WhatsApp summariser matches against every active customer; unknown codes it returns are treated as unmatched.
+- `build_profiles()` takes optional customer codes; `analyze.py` and `build_reports.py` stay scoped to the five POC customers.
+- `TargetCustomer` renamed to `Customer`; balance owing defaults to 0 outside the POC five.
+
 ## 2026-09-04
 
 ### Changed

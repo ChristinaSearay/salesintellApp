@@ -9,8 +9,8 @@ the rep for confirmation, then saves via utils.intel.add_update().
 import os
 from typing import Iterable, List
 
-from constants.customers import TARGET_CUSTOMERS
 from constants.intel import DEFAULT_INTEL_MODEL, INTEL_MAX_TOKENS, IntelSource, extraction_schema
+from utils.customers import load_customers
 from utils.intel import IntelUpdate
 
 # Extra ways the team refers to each customer in chat (name fragments, staff).
@@ -46,9 +46,9 @@ Rules:
 - advice: one sentence on what the rep should do next with this customer, given the message."""
 
 
-def _customer_block() -> str:
+def _customer_block(customers) -> str:
     lines = []
-    for c in TARGET_CUSTOMERS:
+    for c in sorted(customers, key=lambda c: c.name.lower()):
         aliases = ", ".join(CUSTOMER_ALIASES.get(c.code, ()))
         lines.append(f"- {c.code}: {c.name}" + (f" (aliases: {aliases})" if aliases else ""))
     return "\n".join(lines)
@@ -67,9 +67,9 @@ def summarise(text: str, group_names: Iterable[str],
         raise RuntimeError("Summariser is not configured: set ANTHROPIC_API_KEY in .env.")
 
     groups = sorted({g for g in group_names if g})
-    codes = [c.code for c in TARGET_CUSTOMERS]
+    directory = load_customers()
     client = anthropic.Anthropic()
-    user = (f"Customers we track:\n{_customer_block()}\n\n"
+    user = (f"Customers we track:\n{_customer_block(directory.values())}\n\n"
             f"Product groups we sell:\n" + "\n".join(f"- {g}" for g in groups) +
             f"\n\nWhatsApp dump:\n\"\"\"\n{text.strip()}\n\"\"\"")
     try:
@@ -79,7 +79,7 @@ def summarise(text: str, group_names: Iterable[str],
             system=SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user}],
             output_config={"format": {"type": "json_schema",
-                                      "schema": extraction_schema(codes, groups)}},
+                                      "schema": extraction_schema(groups)}},
         )
     except anthropic.AuthenticationError as exc:
         raise RuntimeError("Summariser rejected the API key (ANTHROPIC_API_KEY).") from exc
@@ -96,7 +96,8 @@ def summarise(text: str, group_names: Iterable[str],
     updates = []
     for u in payload.get("updates", []):
         updates.append(IntelUpdate(
-            customer_code=u.get("customer_code") or "",
+            # A code the model invented (not in the directory) counts as unmatched.
+            customer_code=(u.get("customer_code") or "") if (u.get("customer_code") or "") in directory else "",
             customer_as_written=u.get("customer_as_written", ""),
             hooks=list(u.get("hooks", [])),
             source=source.value,

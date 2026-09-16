@@ -9,7 +9,7 @@ here.
 
 API:
   GET  /api/reasons                      -> rejection-reason chips
-  GET  /api/customers                    -> customer cards
+  GET  /api/customers                    -> account cards for every active customer (by spend)
   GET  /api/customer/<code>              -> customer + current 3 actions
   POST /api/customer/<code>/feedback     -> {accepted:[id], rejections:[{id,reasons,note}]}
   POST /api/customer/<code>/reset        -> clear that customer's learning
@@ -24,7 +24,6 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
 from constants.config import DEFAULT_PORT
-from constants.customers import TARGET_CODES
 from constants.feedback import RejectionReason
 from constants.intel import IntelSource
 from utils.intel import IntelUpdate, add_update, delete_update
@@ -33,6 +32,7 @@ from utils.recommend import (
     customer_list,
     group_names,
     intel_payload,
+    is_known_customer,
     reset,
     submit_feedback,
 )
@@ -83,7 +83,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def _code_from(self, parts):
         code = parts[2] if len(parts) > 2 else ""
-        return code if code in TARGET_CODES else None
+        return code if is_known_customer(code) else None
 
     # --- routing -----------------------------------------------------------
     def do_GET(self):
