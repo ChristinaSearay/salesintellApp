@@ -2,32 +2,69 @@
 
 // Screen 1 — Accounts. v0's design, driven by the live engine
 // (api.getAccounts() → /api proxy → Python). Every active Unleashed customer,
-// biggest 2-year spend first, with search so a rep on the road can find anyone.
+// biggest 2-year spend first, with search so a rep on the road can find anyone,
+// paged so the list never turns into one endless scroll.
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { api, matchesAccount } from "@/lib/api";
 import AccountCard from "@/components/AccountCard";
 
-// Cards rendered at once: top accounts when idle, best matches when searching.
-const BROWSE_LIMIT = 30;
-const SEARCH_LIMIT = 50;
+const PAGE_SIZE = 10;
+// Remembered for the tab, so "back" from a visit lands on the same page.
+const LIST_STATE_KEY = "searay.accounts.list";
+
+function readListState() {
+  try {
+    return JSON.parse(sessionStorage.getItem(LIST_STATE_KEY)) || {};
+  } catch {
+    return {};
+  }
+}
+
+function writeListState(state) {
+  try {
+    sessionStorage.setItem(LIST_STATE_KEY, JSON.stringify(state));
+  } catch {}
+}
 
 export default function AccountsPage() {
   const [accounts, setAccounts] = useState(null);
   const [err, setErr] = useState(null);
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(0);
+  const [restored, setRestored] = useState(false);
 
   useEffect(() => {
     api.getAccounts().then(setAccounts).catch((e) => setErr(String(e)));
+    const saved = readListState();
+    if (typeof saved.query === "string") setQuery(saved.query);
+    if (Number.isInteger(saved.page)) setPage(saved.page);
+    setRestored(true);
   }, []);
+
+  useEffect(() => {
+    if (restored) writeListState({ query, page });
+  }, [restored, query, page]);
 
   const searching = query.trim().length > 0;
   const matches = useMemo(
     () => (accounts || []).filter((a) => matchesAccount(a, query)),
     [accounts, query]
   );
-  const shown = matches.slice(0, searching ? SEARCH_LIMIT : BROWSE_LIMIT);
+  const pageCount = Math.max(1, Math.ceil(matches.length / PAGE_SIZE));
+  const current = Math.min(page, pageCount - 1);
+  const shown = matches.slice(current * PAGE_SIZE, (current + 1) * PAGE_SIZE);
+
+  const onSearch = (value) => {
+    setQuery(value);
+    setPage(0);
+  };
+
+  const goTo = (next) => {
+    setPage(next);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const needAttention = (accounts || []).filter((a) =>
     a.alerts?.some((al) => al.tone === "danger")
@@ -72,7 +109,7 @@ export default function AccountsPage() {
           <input
             type="search"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => onSearch(e.target.value)}
             placeholder="🔍  Search customer name or code"
             autoComplete="off"
             enterKeyHint="search"
@@ -93,14 +130,36 @@ export default function AccountsPage() {
         ))}
       </section>
 
+      {accounts && matches.length > PAGE_SIZE && (
+        <nav aria-label="Pages" className="mt-6 flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => goTo(current - 1)}
+            disabled={current === 0}
+            className="h-11 min-w-[96px] rounded-full bg-card px-4 text-[14px] font-semibold text-foreground ring-1 ring-border transition active:scale-95 disabled:opacity-40 disabled:active:scale-100"
+          >
+            ‹ Previous
+          </button>
+          <span className="text-[13px] text-muted-foreground">
+            Page {current + 1} of {pageCount}
+          </span>
+          <button
+            type="button"
+            onClick={() => goTo(current + 1)}
+            disabled={current >= pageCount - 1}
+            className="h-11 min-w-[96px] rounded-full bg-card px-4 text-[14px] font-semibold text-foreground ring-1 ring-border transition active:scale-95 disabled:opacity-40 disabled:active:scale-100"
+          >
+            Next ›
+          </button>
+        </nav>
+      )}
+
       {accounts && (
-        <p className="mt-8 text-center text-xs text-muted-foreground">
+        <p className="mt-6 text-center text-xs text-muted-foreground">
           {searching && matches.length === 0
             ? `No customer matches “${query.trim()}”.`
-            : matches.length > shown.length
-              ? searching
-                ? `Showing ${shown.length} of ${matches.length} matches — keep typing to narrow it down`
-                : `Top ${shown.length} by spend — search to find any of the ${accounts.length.toLocaleString()} customers`
+            : matches.length > PAGE_SIZE
+              ? `${current * PAGE_SIZE + 1}–${current * PAGE_SIZE + shown.length} of ${matches.length.toLocaleString()} ${searching ? "matches" : "customers, biggest spend first"}`
               : "Tap a customer to prep your visit"}
         </p>
       )}

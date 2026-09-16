@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-09-17
+
+### Changed
+- Accounts screen is paginated, 10 customers per page with Previous/Next and "Page x of y"; replaces the top-30 browse / 50-result search caps, so every customer and every search match is reachable. Search jumps back to page 1; the page and search are remembered for the tab, so "back" from a visit returns to the same page.
+
 ## 2026-09-16 (2)
 
 ### Added
