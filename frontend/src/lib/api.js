@@ -22,7 +22,8 @@ const FLAG = {
   NONE:             null,
 };
 const KIND = {
-  "Retention": "Save the account", "Upsell": "Add to their order",
+  "Retention": "Save the account", "Reorder": "Due to reorder",
+  "Upsell": "Add to their order",
   "New category": "Try something new", "Relationship": "Build trust",
   "Commercial terms": "New deal structure", "Equipment": "Sell equipment",
   "General": "Idea",

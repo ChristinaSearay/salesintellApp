@@ -36,7 +36,8 @@ The app covers **every active customer** (completed order or invoice in the data
 
 ### Recommendation pipeline (read these four together)
 1. `utils/profile.py` — `CustomerProfile`: RFM scores + segment + relationship flag + bought groups + upsell matches, assembled from the 4 CSVs.
-2. `utils/candidates.py` — the `Candidate` pool = curated seed actions (`constants/recommended_actions.py`) + auto-generated upsell / white-space / meeting-notes items (plus a "newest in a range they buy" top-up when the pool is below `MIN_AUTO_POOL`), each tagged with `kind`, `incentive_type`, `price_point`.
+2. `utils/candidates.py` — the `Candidate` pool = curated seed actions (`constants/recommended_actions.py`) + auto-generated repeat-buying / upsell / white-space / range-extension / meeting-notes items (plus a "newest in a range they buy" top-up when the pool is below `MIN_AUTO_POOL`), each tagged with `kind`, `incentive_type`, `price_point`.
+2b. `utils/repeat.py` — the buying rhythm behind the reorder cards. A `Cadence` (per product code or per group) uses the **median gap between distinct order dates**, so one bulk order can't invent a rhythm; thresholds live in `constants/repeat.py`. Two deliberate guards: only a line with ≥4 order dates can be framed as "they've stopped" (two orders is one gap, not a rhythm), and a thin history quiet for over a year is stale, not due.
 3. `utils/preferences.py` — the learning. `apply_rejection()` maps a `RejectionReason` (`constants/feedback.py`) to deterministic effects (price ceiling, group exclusion, no-discounts, action-kind re-weighting). `rank_candidates()` scores the pool; **accepted candidates bypass all filters and are pinned to the top.**
 4. `utils/recommend.py` — ranks, enforces group-diversity (max one card per product group in a shown set of 3), and serialises for the API.
 

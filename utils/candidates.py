@@ -18,13 +18,31 @@ from constants.feedback import (
     PriceBand,
     price_band,
 )
+from constants.config import ANCHOR_DATE
 from constants.recommended_actions import RECOMMENDED_ACTIONS, Pitch
+from constants.repeat import (
+    GROUP_DUE_RATIO,
+    GROUP_RESTOCK_PENALTY,
+    ITEM_DUE_RATIO,
+    MAX_DUE_DAYS,
+    MAX_GROUP_RESTOCK,
+    MAX_LAPSED_CARDS,
+    MAX_RANGE_EXTENSION,
+    MAX_REORDER,
+    MIN_RESTOCK_OVERDUE_DAYS,
+    MIN_ITEM_PURCHASE_DATES,
+    MIN_LAPSED_PURCHASE_DATES,
+    RANGE_ANCHOR_ITEMS,
+    RANGE_PRICE_TOLERANCE,
+)
 from utils.products import (
     CatalogueItem,
+    is_pitchable,
     new_since,
     newest_in_groups,
     rank_items,
 )
+from utils.repeat import Cadence, due, group_cadences, item_cadences
 
 Resolver = Callable[[str], Tuple[str, Optional[float], Optional[str]]]
 
@@ -162,6 +180,106 @@ def _whitespace_candidate(code: str, group: str, rep: CatalogueItem, count: int)
     )
 
 
+# --- Repeat-buying candidates (their own rhythm) ---------------------------
+
+def _reorder_candidate(code: str, cad: Cadence, item: CatalogueItem, lapsed: bool) -> Candidate:
+    """A specific line of theirs that is due (or overdue) to come round again."""
+    days = cad.days_since(ANCHOR_DATE)
+    last = f"{cad.last_bought:%d %b %Y}"
+    if lapsed:
+        title = f"They've stopped reordering: {cad.group}"
+        detail = (f"{cad.description} was a standing line — {cad.times_bought} orders, "
+                  f"{cad.interval_phrase}. Nothing since {last} ({days} days). Ask what "
+                  f"changed before pitching anything new; it's in stock if they want it back.")
+    elif cad.times_bought == MIN_ITEM_PURCHASE_DATES:
+        # Two orders is one gap, not a rhythm — say so rather than inventing one.
+        title = f"Due to reorder: {cad.group}"
+        detail = (f"They've ordered {cad.description} twice ({cad.gap_phrase}), last "
+                  f"{cad.last_quantity:,.0f} on {last} — {days} days ago, so another run "
+                  f"is about due. It's in stock now.")
+    else:
+        title = f"Due to reorder: {cad.group}"
+        detail = (f"They buy {cad.description} {cad.interval_phrase} — {cad.times_bought} orders, "
+                  f"last {cad.last_quantity:,.0f} on {last} ({days} days ago). They're due, "
+                  f"and it's in stock now.")
+    return Candidate(
+        id=f"{code}-reorder-{cad.key}",
+        title=title,
+        detail=detail,
+        kind=ActionKind.REORDER,
+        incentive_type=IncentiveType.NONE,
+        base_score=KIND_BASE_SCORE[ActionKind.REORDER],
+        pitches=(Pitch(cad.key, f"their own line — last bought {cad.last_bought:%b %Y}"),),
+        groups=(cad.group,),
+        grounded_in=(f"Repeat-buying engine: bought on {cad.times_bought} separate dates, "
+                     f"{cad.interval_phrase}."),
+        price_point=item.sell_price,
+    )
+
+
+def _restock_candidate(code: str, cad: Cadence, item: CatalogueItem) -> Candidate:
+    """A whole range they buy on a rhythm that has gone quiet."""
+    days = cad.days_since(ANCHOR_DATE)
+    return Candidate(
+        id=f"{code}-restock-{_slug(cad.group)}",
+        title=f"Time to restock {cad.group}",
+        detail=(f"They order {cad.group} {cad.interval_phrase}, but the last one was "
+                f"{days} days ago ({cad.last_bought:%d %b %Y}) — that range is running "
+                f"behind. This piece is in stock now."),
+        kind=ActionKind.REORDER,
+        incentive_type=IncentiveType.NONE,
+        base_score=KIND_BASE_SCORE[ActionKind.REORDER] - GROUP_RESTOCK_PENALTY,
+        pitches=(Pitch(item.code, "in stock, in the range they're due to restock"),),
+        groups=(cad.group,),
+        grounded_in=(f"Repeat-buying engine: {cad.times_bought} orders in this group, "
+                     f"{cad.interval_phrase}."),
+        price_point=item.sell_price,
+    )
+
+
+def _range_extension_candidate(code: str, anchor: Cadence, item: CatalogueItem) -> Candidate:
+    """A never-ordered piece sitting beside one of their best sellers."""
+    return Candidate(
+        id=f"{code}-range-{item.code}",
+        title=f"Extend their range: more {item.group}",
+        detail=(f"{anchor.description} is one of their best sellers (${anchor.value:,.0f} "
+                f"over {anchor.times_bought} orders). This is the same range at a similar "
+                f"price, in stock, and they have never ordered it."),
+        kind=ActionKind.UPSELL,
+        incentive_type=IncentiveType.NONE,
+        base_score=KIND_BASE_SCORE[ActionKind.UPSELL],
+        pitches=(Pitch(item.code, f"same range and price as their {anchor.description[:40]}"),),
+        groups=(item.group,),
+        grounded_in="Range engine: same group and price band as one of their best sellers, never ordered.",
+        price_point=item.sell_price,
+    )
+
+
+def _restock_pick(cad: Cadence, items: List[Cadence], cat_by_code: dict,
+                  catalogue: List[CatalogueItem], used: set) -> Optional[CatalogueItem]:
+    """What to put in front of them for an overdue range: their own best line in
+    it if we can ship it, else the newest in-stock piece in that range."""
+    for c in items:  # already sorted by spend
+        if c.group != cad.group or c.key in used:
+            continue
+        item = cat_by_code.get(c.key)
+        if item and item.in_stock:
+            return item
+    picks = _dedup_by_code(newest_in_groups(catalogue, [cad.group], limit=6, in_stock_only=True), used)
+    return picks[0] if picks else None
+
+
+def _sibling(catalogue: List[CatalogueItem], group: str, price: Optional[float],
+             skip: set) -> Optional[CatalogueItem]:
+    """The best in-stock piece in `group`, near `price`, that they've never had."""
+    lo, hi = ((price * (1 - RANGE_PRICE_TOLERANCE), price * (1 + RANGE_PRICE_TOLERANCE))
+              if price else (0.0, float("inf")))
+    items = [i for i in catalogue
+             if i.group == group and i.in_stock and is_pitchable(i)
+             and i.code not in skip and lo <= i.sell_price <= hi]
+    return rank_items(items)[0] if items else None
+
+
 def _latest_in_range_candidate(code: str, item: CatalogueItem) -> Candidate:
     added = f" (added {item.created_on:%d %b %Y})" if item.created_on else ""
     return Candidate(
@@ -202,6 +320,7 @@ def build_candidate_pool(profile, catalogue: List[CatalogueItem], resolve: Resol
     pool: List[Candidate] = _seed_candidates(code, resolve)
     used_products = {p.code for c in pool for p in c.pitches}
 
+    cat_by_code = {i.code: i for i in catalogue}
     fresh_instock = [i for i in new_since(catalogue, profile.last_order_date) if i.in_stock]
 
     # Cap how many auto candidates we draw from any single group, for variety.
@@ -212,6 +331,47 @@ def build_candidate_pool(profile, catalogue: List[CatalogueItem], resolve: Resol
 
     def note_group(group: str) -> None:
         group_counts[group] = group_counts.get(group, 0) + 1
+
+    # Their own rhythm first: specific lines that are due to come round again.
+    items_cad = item_cadences(profile.purchases)
+    reorder_groups = set()
+    added = lapsed_added = 0
+    for cad in due(items_cad, ANCHOR_DATE, ITEM_DUE_RATIO):
+        if added >= MAX_REORDER:
+            break
+        item = cat_by_code.get(cad.key)
+        if not item or not item.in_stock or cad.key in used_products or not can_add(cad.group):
+            continue
+        # Only a line with a real history can have "stopped"; a thin one that
+        # quiet is simply stale, and pitching it as a reorder would be a guess.
+        lapsed = cad.is_lapsed(ANCHOR_DATE) and cad.times_bought >= MIN_LAPSED_PURCHASE_DATES
+        if not lapsed and cad.days_since(ANCHOR_DATE) > MAX_DUE_DAYS:
+            continue
+        if lapsed and lapsed_added >= MAX_LAPSED_CARDS:
+            continue
+        pool.append(_reorder_candidate(code, cad, item, lapsed))
+        lapsed_added += lapsed
+        used_products.add(cad.key)
+        note_group(cad.group)
+        reorder_groups.add(cad.group)
+        added += 1
+
+    # Then whole ranges that have gone quiet (skipping groups covered above).
+    added = 0
+    for cad in due(group_cadences(profile.purchases), ANCHOR_DATE, GROUP_DUE_RATIO):
+        if added >= MAX_GROUP_RESTOCK:
+            break
+        if cad.group in reorder_groups or not can_add(cad.group):
+            continue
+        if cad.days_since(ANCHOR_DATE) - (cad.interval_days or 0) < MIN_RESTOCK_OVERDUE_DAYS:
+            continue
+        item = _restock_pick(cad, items_cad, cat_by_code, catalogue, used_products)
+        if not item:
+            continue
+        pool.append(_restock_candidate(code, cad, item))
+        used_products.add(item.code)
+        note_group(cad.group)
+        added += 1
 
     # Upsell: new in-stock items inside bought groups, by value.
     upsell_items = rank_items([i for i in fresh_instock if i.group in bought])
@@ -250,6 +410,22 @@ def build_candidate_pool(profile, catalogue: List[CatalogueItem], resolve: Resol
             for c in taken:
                 pool.append(c)
                 note_group(c.groups[0])
+
+    # Extend the range: siblings of their best sellers they've never ordered.
+    added = 0
+    for anchor in item_cadences(profile.purchases, min_dates=1)[:RANGE_ANCHOR_ITEMS]:
+        if added >= MAX_RANGE_EXTENSION:
+            break
+        if not can_add(anchor.group):
+            continue
+        sibling = _sibling(catalogue, anchor.group, resolve(anchor.key)[1],
+                           used_products | profile.bought_product_codes)
+        if not sibling:
+            continue
+        pool.append(_range_extension_candidate(code, anchor, sibling))
+        used_products.add(sibling.code)
+        note_group(anchor.group)
+        added += 1
 
     # Latest-in-range top-up for thin pools (one per bought group, by spend).
     if len(pool) < MIN_AUTO_POOL:

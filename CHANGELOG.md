@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-09-16 (2)
+
+### Added
+- Item-level recommendations driven by each customer's own buying rhythm (`utils/repeat.py`, `constants/repeat.py`): **"Due to reorder"** (a product code they repurchase, overdue against the median gap between their order dates, in stock now), **"Time to restock <group>"** (a range they buy on a rhythm that has gone visibly quiet), and **"Extend their range"** (an in-stock piece in the same group and price band as one of their best sellers, never ordered).
+- `ActionKind.REORDER` (base score 72, above Upsell) with the "Due to reorder" label in the rep UI.
+- `CustomerProfile.purchases` — real product lines (noise excluded) behind the cadence analysis.
+
+### Fixed
+- The five POC customers are always in the customer directory, even once they age out of the 24-month window (The Cut has: 0 rows in the 16 Sep sync), so their reports still generate and their visit pages still load.
+
 ## 2026-09-16
 
 ### Added

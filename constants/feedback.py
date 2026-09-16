@@ -34,6 +34,7 @@ def price_band(price: float) -> PriceBand:
 # --- What sort of action a candidate is ------------------------------------
 class ActionKind(Enum):
     RETENTION = "Retention"
+    REORDER = "Reorder"
     UPSELL = "Upsell"
     WHITESPACE = "New category"
     RELATIONSHIP = "Relationship"
@@ -86,6 +87,7 @@ SEED_BASE_SCORE = 100.0  # the hand-authored actions start on top
 # Base score for auto-generated candidates by kind.
 KIND_BASE_SCORE = {
     ActionKind.RETENTION: 75.0,
+    ActionKind.REORDER: 72.0,   # their own buying rhythm — the most concrete ask
     ActionKind.EQUIPMENT: 68.0,
     ActionKind.UPSELL: 65.0,
     ActionKind.STRUCTURAL: 60.0,

@@ -8,7 +8,7 @@ for the future tool to attach rep feedback / preferences.
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from constants.columns import (
     CustomerCol,
@@ -31,7 +31,7 @@ from utils.products import (
     new_since,
     rank_items,
 )
-from utils.parsing import days_between, normalise_phone, parse_date, parse_money
+from utils.parsing import days_between, normalise_phone, parse_date, parse_money, parse_number
 from utils.rfm import rfm_segment, score_frequency, score_monetary, score_recency
 
 
@@ -40,6 +40,18 @@ class BoughtGroup:
     name: str
     lines: int
     spend: float
+
+
+@dataclass(frozen=True)
+class Purchase:
+    """One real product line on one of their orders (noise already excluded).
+    The raw material for the repeat-buying engine (utils/repeat.py)."""
+    code: str
+    description: str
+    group: str
+    when: date
+    quantity: float
+    value: float
 
 
 @dataclass(frozen=True)
@@ -78,6 +90,7 @@ class CustomerProfile:
     new_since_count: int = 0
     contact: ContactInfo = field(default_factory=ContactInfo)
     bought_product_codes: frozenset = frozenset()  # every product code on their orders
+    purchases: Tuple[Purchase, ...] = ()           # real product lines, for cadence analysis
 
     @property
     def rfm_code(self) -> str:
@@ -123,6 +136,31 @@ def _bought_groups(sales_rows) -> List[BoughtGroup]:
         agg[group][1] += parse_money(row.get(SalesCol.SUB_TOTAL))
     groups = [BoughtGroup(g, v[0], v[1]) for g, v in agg.items()]
     return sorted(groups, key=lambda g: (-g.spend, -g.lines, g.name))
+
+
+def _purchases(sales_rows) -> Tuple[Purchase, ...]:
+    """Real product lines only — the same noise exclusions as _bought_groups,
+    which matters: freight/sundry lines are the most 'repeatedly bought' of all."""
+    out = []
+    for row in sales_rows:
+        code = (row.get(SalesCol.PRODUCT_CODE) or "").strip()
+        if not code or code in EXCLUDED_PRODUCT_CODES:
+            continue
+        group = canonical_group(row.get(SalesCol.PRODUCT_GROUP))
+        if not group or group in EXCLUDED_GROUPS:
+            continue
+        when = parse_date(row.get(SalesCol.ORDER_DATE))
+        if not when:
+            continue
+        out.append(Purchase(
+            code=code,
+            description=(row.get(SalesCol.PRODUCT) or "").strip(),
+            group=group,
+            when=when,
+            quantity=parse_number(row.get(SalesCol.QUANTITY)),
+            value=parse_money(row.get(SalesCol.SUB_TOTAL)),
+        ))
+    return tuple(out)
 
 
 def _customer_master(codes: frozenset) -> Dict[str, dict]:
@@ -253,6 +291,7 @@ def build_profiles(codes: Optional[Iterable[str]] = None) -> List[CustomerProfil
             contact=_contact(s_rows, contact_master.get(code)),
             bought_product_codes=frozenset(
                 c for c in ((r.get(SalesCol.PRODUCT_CODE) or "").strip() for r in s_rows) if c),
+            purchases=_purchases(s_rows),
         ))
     if codes is None:
         profiles.sort(key=lambda p: (-p.monetary, p.customer.name))

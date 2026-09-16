@@ -20,7 +20,9 @@ def _clean(value) -> str:
 @lru_cache(maxsize=1)
 def load_customers() -> Dict[str, Customer]:
     """code -> Customer for every active customer. Cached per process."""
-    codes = set()
+    # The POC five are always present, even once they age out of the 24-month
+    # window (The Cut has): they are curated, and reports are built from them.
+    codes = set(TARGET_BY_CODE)
     for row in sales_rows():
         code = _clean(row.get(SalesCol.CUSTOMER_CODE))
         if code and row.get(SalesCol.STATUS) == SalesStatus.COMPLETED:
