@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-17 (3)
+
+### Changed
+- Home screen shows only the Needs attention queue; the searchable, paged customer list moved to its own screen (`/customers`), opened from a new "All customers" button left of "WhatsApp".
+- "‹ Back" on a visit page returns to the screen the customer was opened from (Needs attention or All customers, `frontend/src/lib/nav.js`).
+
 ## 2026-09-17 (2)
 
 ### Added

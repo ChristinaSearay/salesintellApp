@@ -109,7 +109,7 @@ Or run them separately: `uv run app` (engine) + `cd frontend && pnpm dev` (UI).
 
 Open **http://localhost:3000**. The flow:
 
-1. Work the **Needs attention** queue at the top (the 5 customers to action now — see below), or pick any customer from the paged list
+1. Work the **Needs attention** queue on the home screen (the 5 customers to action now — see below), or tap **All customers** to search the full paged list
 2. Review three recommended actions
 3. Accept (👍) or skip (👎) each one
 4. On a skip, tap a reason chip (price, group, discounts, pressure, etc.)

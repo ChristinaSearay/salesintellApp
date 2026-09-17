@@ -8,6 +8,7 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { api } from "@/lib/api";
+import { useBackHref } from "@/lib/nav";
 import { toneCls } from "@/lib/ui";
 import Pitch from "@/components/Pitch";
 
@@ -26,6 +27,7 @@ export default function VisitPage({ params }) {
   const [marks, setMarks] = useState({});
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
+  const backHref = useBackHref();
 
   useEffect(() => {
     api.getReasons().then(setReasons).catch(() => {});
@@ -76,7 +78,7 @@ export default function VisitPage({ params }) {
   if (err)
     return (
       <main className="mx-auto min-h-screen w-full max-w-md px-5 pt-12">
-        <Link href="/" className="text-sm font-medium text-primary">‹ Back</Link>
+        <Link href={backHref} className="text-sm font-medium text-primary">‹ Back</Link>
         <p className="mt-4 rounded-2xl bg-danger-soft px-4 py-3 text-sm text-danger">Couldn’t load this account.</p>
       </main>
     );
@@ -93,9 +95,9 @@ export default function VisitPage({ params }) {
       {/* header */}
       <header className="pt-12">
         <Link
-          href="/"
+          href={backHref}
           className="grid size-10 place-items-center rounded-full bg-card text-xl text-foreground ring-1 ring-border transition active:scale-95"
-          aria-label="Back to accounts"
+          aria-label="Back"
         >
           ‹
         </Link>
