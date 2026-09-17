@@ -76,6 +76,26 @@ export function matchesAccount(account, query) {
   return account.name.toLowerCase().includes(q) || account.code.toLowerCase().includes(q);
 }
 
+// Why a customer is in the "needs attention" queue (AttentionReason in constants/attention.py).
+export const REASON = { OVERDUE: "overdue", NO_RECENT_NOTE: "no_recent_note", RECENTLY_NOTED: "recently_noted" };
+
+// The "needs attention" queue: account cards plus why each customer is there.
+function toAttention(payload) {
+  return {
+    queue: (payload.queue || []).map((c) => ({
+      ...toAccount(c),
+      why: c.why || "",
+      reason: c.reason,
+      lastNote: c.last_note
+        ? { text: c.last_note.text, when: daysPhrase(c.last_note.days_ago) }
+        : null,
+    })),
+    overdue: payload.overdue || 0,
+    notedRecently: payload.noted_recently || 0,
+    snoozeDays: payload.snooze_days || 0,
+  };
+}
+
 function toPitch(a) {
   return {
     id: a.id,
@@ -121,6 +141,9 @@ function toPrep(payload) {
 
 export const api = {
   getAccounts: async () => (await get("/api/customers")).map(toAccount),
+  getAttention: async () => toAttention(await get("/api/attention")),
+  // Saving a note sends the customer to the back of the queue → refreshed queue.
+  saveNote: async (code, text) => toAttention(await post(`/api/attention/${code}/note`, { text })),
   getReasons: () => get("/api/reasons"),
   getPrep: async (code) => toPrep(await get(`/api/customer/${code}`)),
   // rejections: [{ id, reasons: [REASON_NAME], note }]

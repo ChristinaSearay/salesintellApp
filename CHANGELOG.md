@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-09-17 (2)
+
+### Added
+- "Needs attention" queue on the accounts screen: the top 5 customers to work on — late for an order against their own rhythm (average gap between order dates, ≥1.5× and 14+ days over), then no recent note, biggest 2-year spend first; customers noted in the last 30 days go to the back of the line (`utils/attention.py`, `constants/attention.py`).
+- Note box on each queue card: saving a note (`POST /api/attention/<code>/note`) moves the customer to the back of the line and the next one pops up; the note shows under "What's going on" on the visit page.
+- `GET /api/attention`; `CustomerProfile.order_dates`; `utils.intel.add_note` / `latest_updates`.
+
+### Changed
+- Accounts subtitle shows how many customers are overdue for an order instead of "need a nudge"; search and the paged list sit under an "All customers" heading below the queue, and paging jumps to the top of that list.
+- README documents the Render persistent disk (`SEARAY_NOTES_DIR`, `SEARAY_FEEDBACK_DIR`) so notes survive deploys.
+
 ## 2026-09-17
 
 ### Changed

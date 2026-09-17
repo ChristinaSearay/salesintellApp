@@ -91,6 +91,7 @@ class CustomerProfile:
     contact: ContactInfo = field(default_factory=ContactInfo)
     bought_product_codes: frozenset = frozenset()  # every product code on their orders
     purchases: Tuple[Purchase, ...] = ()           # real product lines, for cadence analysis
+    order_dates: Tuple[date, ...] = ()             # distinct order dates, oldest first
 
     @property
     def rfm_code(self) -> str:
@@ -292,6 +293,7 @@ def build_profiles(codes: Optional[Iterable[str]] = None) -> List[CustomerProfil
             bought_product_codes=frozenset(
                 c for c in ((r.get(SalesCol.PRODUCT_CODE) or "").strip() for r in s_rows) if c),
             purchases=_purchases(s_rows),
+            order_dates=tuple(sorted(set(order_dates))),
         ))
     if codes is None:
         profiles.sort(key=lambda p: (-p.monetary, p.customer.name))

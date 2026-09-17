@@ -11,7 +11,7 @@ import os
 import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from constants.config import NOTES_DIR
 from constants.intel import MAX_LIVE_HOOKS, MAX_TOTAL_HOOKS, UNCHANGED, IntelSource
@@ -81,6 +81,30 @@ def add_update(update: IntelUpdate) -> IntelUpdate:
     updates.append(update)
     _save(update.customer_code, updates)
     return update
+
+
+def add_note(code: str, text: str) -> IntelUpdate:
+    """A rep's own note (what is / isn't working) — shown in "What's going on"."""
+    text = text.strip()
+    return add_update(IntelUpdate(customer_code=code, hooks=[text],
+                                  source=IntelSource.MANUAL.value, raw_text=text))
+
+
+def latest_updates() -> Dict[str, IntelUpdate]:
+    """code -> newest saved update, for every customer that has one (one
+    directory scan, so the attention queue doesn't open a file per customer)."""
+    try:
+        names = os.listdir(NOTES_DIR)
+    except FileNotFoundError:
+        return {}
+    out: Dict[str, IntelUpdate] = {}
+    for name in names:
+        code, ext = os.path.splitext(name)
+        if ext == ".json":
+            latest = latest_update(code)
+            if latest:
+                out[code] = latest
+    return out
 
 
 def delete_update(code: str, update_id: str) -> bool:

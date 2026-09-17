@@ -63,17 +63,17 @@ class Cadence:
     @property
     def interval_phrase(self) -> str:
         """'about every 6 weeks' — only meaningful with a few orders behind it."""
-        unit = _unit_phrase(self.interval_days)
+        unit = unit_phrase(self.interval_days)
         return f"about every {unit}" if unit else ""
 
     @property
     def gap_phrase(self) -> str:
         """'about 5 months apart' — honest wording when there is only one gap."""
-        unit = _unit_phrase(self.interval_days)
+        unit = unit_phrase(self.interval_days)
         return f"about {unit} apart" if unit else ""
 
 
-def _unit_phrase(days: Optional[int]) -> str:
+def unit_phrase(days: Optional[int]) -> str:
     """'6 weeks' / '4 months' — rep-readable, never in raw days."""
     if not days:
         return ""

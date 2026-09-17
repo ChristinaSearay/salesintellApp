@@ -10,6 +10,8 @@ here.
 API:
   GET  /api/reasons                      -> rejection-reason chips
   GET  /api/customers                    -> account cards for every active customer (by spend)
+  GET  /api/attention                    -> the top customers that need attention now
+  POST /api/attention/<code>/note        -> {text} -> save a rep note, returns the refreshed queue
   GET  /api/customer/<code>              -> customer + current 3 actions
   POST /api/customer/<code>/feedback     -> {accepted:[id], rejections:[{id,reasons,note}]}
   POST /api/customer/<code>/reset        -> clear that customer's learning
@@ -26,7 +28,8 @@ from urllib.parse import urlparse
 from constants.config import DEFAULT_PORT
 from constants.feedback import RejectionReason
 from constants.intel import IntelSource
-from utils.intel import IntelUpdate, add_update, delete_update
+from utils.attention import attention_payload
+from utils.intel import IntelUpdate, add_note, add_update, delete_update
 from utils.recommend import (
     actions_payload,
     customer_list,
@@ -96,6 +99,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(reasons_payload())
         if path == "/api/customers":
             return self._json(customer_list())
+        if path == "/api/attention":
+            return self._json(attention_payload())
         parts = path.strip("/").split("/")
         if len(parts) == 3 and parts[0] == "api" and parts[1] == "customer":
             code = self._code_from(parts)
@@ -114,6 +119,8 @@ class Handler(BaseHTTPRequestHandler):
         parts = path.strip("/").split("/")
         if len(parts) >= 2 and parts[0] == "api" and parts[1] == "intel":
             return self._post_intel(parts)
+        if len(parts) == 4 and parts[0] == "api" and parts[1] == "attention" and parts[3] == "note":
+            return self._post_note(parts)
         if len(parts) == 4 and parts[0] == "api" and parts[1] == "customer":
             code = self._code_from(parts)
             if not code:
@@ -132,6 +139,22 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as exc:  # never 500 silently in a demo
                 return self._json({"error": str(exc)}, status=500)
         self.send_error(404)
+
+    def _post_note(self, parts):
+        code = self._code_from(parts)
+        if not code:
+            return self.send_error(404)
+        try:
+            text = (self._read_body().get("text") or "").strip()
+        except json.JSONDecodeError:
+            return self._json({"error": "bad json"}, status=400)
+        if not text:
+            return self._json({"error": "no text"}, status=400)
+        try:
+            add_note(code, text)
+            return self._json(attention_payload())
+        except Exception as exc:  # never 500 silently in a demo
+            return self._json({"error": str(exc)}, status=500)
 
     def _post_intel(self, parts):
         try:

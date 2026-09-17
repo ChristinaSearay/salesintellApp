@@ -34,6 +34,9 @@ Both `build_reports.py` and `server.py` get a customer's current top-3 from `cur
 ### Customer scope
 The app covers **every active customer** (completed order or invoice in the data) via `utils/customers.py:load_customers()`, sorted by 24-month spend. The five POC customers in `constants/customers.py` (`TARGET_CUSTOMERS`) keep curated names, manual balances, meeting notes and seed actions, and remain the scope of `analyze.py` / `build_reports.py` (pass codes to `build_profiles(codes)`); everyone else runs on the auto-generated candidates only.
 
+### Needs-attention queue
+`utils/attention.py` ranks every active customer for the accounts screen's top-5 queue: late against their own rhythm (average gap between distinct `order_dates`, deliberately not the median — order bursts drag a median to a few days), then no recent note, biggest spend first; any saved update in `notes/` within `NOTE_SNOOZE_DAYS` parks a customer at the back. Notes are read fresh per request (no restart needed).
+
 ### Recommendation pipeline (read these four together)
 1. `utils/profile.py` — `CustomerProfile`: RFM scores + segment + relationship flag + bought groups + upsell matches, assembled from the 4 CSVs.
 2. `utils/candidates.py` — the `Candidate` pool = curated seed actions (`constants/recommended_actions.py`) + auto-generated repeat-buying / upsell / white-space / range-extension / meeting-notes items (plus a "newest in a range they buy" top-up when the pool is below `MIN_AUTO_POOL`), each tagged with `kind`, `incentive_type`, `price_point`.

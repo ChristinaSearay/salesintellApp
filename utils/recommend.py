@@ -199,6 +199,11 @@ def customer_summary(code: str) -> dict:
     }
 
 
+def all_profiles() -> Dict[str, "CustomerProfile"]:
+    """code -> CustomerProfile for every active customer (cached engine)."""
+    return _engine()["profiles"]
+
+
 def is_known_customer(code: str) -> bool:
     return code in _engine()["profiles"]
 
