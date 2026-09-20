@@ -53,6 +53,36 @@ def _request(endpoint: str, page: int, params: dict) -> dict:
         raise RuntimeError(f"Unleashed {endpoint} page {page} → HTTP {exc.code}: {body}") from exc
 
 
+def post(endpoint: str, resource_id: str, payload: dict) -> dict:
+    """Create/replace one object (Unleashed writes are POST /<Endpoint>/<Guid>).
+
+    The signature covers the query string, which is empty here — the Guid sits
+    in the path, exactly as it does for the paged reads.
+    """
+    if not has_credentials():
+        raise RuntimeError(
+            "Unleashed credentials missing — set UNLEASHED_API_ID and UNLEASHED_API_KEY.")
+    body = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        f"{API_URL}/{endpoint}/{resource_id}",
+        data=body,
+        method="POST",
+        headers={
+            "api-auth-id": API_ID,
+            "api-auth-signature": signature(""),
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            raw = resp.read().decode("utf-8")
+            return json.loads(raw) if raw else {}
+    except HTTPError as exc:
+        detail = exc.read().decode("utf-8", "replace")[:300]
+        raise RuntimeError(f"Unleashed {endpoint} write → HTTP {exc.code}: {detail}") from exc
+
+
 def fetch_all(endpoint: str, params: dict | None = None) -> list:
     """Fetch every page of an endpoint and return the combined Items list."""
     if not has_credentials():

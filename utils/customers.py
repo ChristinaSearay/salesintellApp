@@ -11,6 +11,7 @@ from constants.columns import CustomerCol, InvoiceCol, SalesCol, SalesStatus
 from constants.customers import TARGET_BY_CODE, Customer
 from utils.datasource import customer_rows, invoice_rows, sales_rows
 from utils.parsing import parse_date
+from utils.prospect_store import load_all as load_prospects
 
 
 def _clean(value) -> str:
@@ -44,6 +45,12 @@ def load_customers() -> Dict[str, Customer]:
         _clean(row.get(CustomerCol.CODE)): _clean(row.get(CustomerCol.NAME))
         for row in customer_rows()
     }
+
+    # Businesses a rep created from a visit: no orders or invoices yet, so they
+    # reach the directory the same way the curated five do once they age out.
+    for code, record in load_prospects().items():
+        codes.add(code)
+        master_names.setdefault(code, _clean(record.get("name")))
 
     out: Dict[str, Customer] = {}
     for code in codes:

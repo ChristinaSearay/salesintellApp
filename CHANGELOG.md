@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-09-21 (2)
+
+### Added
+- Create a visited business in Unleashed from `/inbox` when it isn't a customer yet: near-duplicate check against every Unleashed customer, a suggested code, then a rep-confirmed write (`utils/prospects.py`, `constants/prospects.py`, `POST /api/prospects/check`, `POST /api/prospects/create`).
+- `utils/prospect_store.py` keeps created businesses in `prospects/` (`SEARAY_PROSPECTS_DIR`) so they appear in the app before the next sync and can't be created twice.
+- `utils.unleashed.post` — the first write path to Unleashed.
+- `Segment.NEW_PROSPECT` for customers with no orders and no invoices.
+
+### Fixed
+- The anchor date is read per request (`constants.config.anchor_date()`); as a module-level constant it froze at process start, so "days since last order" stopped advancing on the long-running server. The engine cache now rebuilds when the date rolls over.
+
 ## 2026-09-21
 
 ### Fixed

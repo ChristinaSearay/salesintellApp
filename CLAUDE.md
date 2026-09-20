@@ -37,6 +37,9 @@ The app covers **every active customer** (completed order or invoice in the data
 ### Needs-attention queue
 `utils/attention.py` ranks every active customer for the accounts screen's top-5 queue: late against their own rhythm (average gap between distinct `order_dates`, deliberately not the median — order bursts drag a median to a few days), then no recent note, biggest spend first; any saved update in `notes/` within `NOTE_SNOOZE_DAYS` parks a customer at the back. Notes are read fresh per request (no restart needed).
 
+### New customers from a visit
+`utils/prospects.py` handles a business a rep visited that Unleashed doesn't have (Christina's process). `check()` compares the name against **every** Unleashed customer — `customer_rows()`, not `load_customers()`, because the whole point is shops with no order history — plus `utils/prospect_store.py`, which records what we created since the last sync. `create()` POSTs the bare-minimum Customer to Unleashed (`utils/unleashed.py:post`), saves it locally, and clears the directory cache so the customer exists in the app immediately instead of after the next `uv run sync`. Never make this automatic: the rep confirms, having seen the near-duplicates. A customer with no orders and no invoices gets `Segment.NEW_PROSPECT`, not "Hibernating / Lost".
+
 ### Recommendation pipeline (read these four together)
 1. `utils/profile.py` — `CustomerProfile`: RFM scores + segment + relationship flag + bought groups + upsell matches, assembled from the 4 CSVs.
 2. `utils/candidates.py` — the `Candidate` pool = curated seed actions (`constants/recommended_actions.py`) + auto-generated repeat-buying / upsell / white-space / range-extension / meeting-notes items (plus a "newest in a range they buy" top-up when the pool is below `MIN_AUTO_POOL`), each tagged with `kind`, `incentive_type`, `price_point`.

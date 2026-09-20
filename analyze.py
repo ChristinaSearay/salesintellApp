@@ -3,7 +3,7 @@ target customers and print them for review (no report files written yet).
 
 Run:  uv run python analyze.py
 """
-from constants.config import ANCHOR_DATE
+from constants.config import anchor_date
 from constants.customers import TARGET_BY_CODE
 from utils.profile import build_profiles
 
@@ -15,7 +15,7 @@ def money(v: float) -> str:
 def main() -> None:
     profiles = build_profiles(TARGET_BY_CODE)
 
-    print(f"\nANCHOR (snapshot) DATE: {ANCHOR_DATE:%d %b %Y}\n")
+    print(f"\nANCHOR (snapshot) DATE: {anchor_date():%d %b %Y}\n")
     print("=" * 96)
     print("STEP 2 — RFM SCORECARD")
     print("=" * 96)

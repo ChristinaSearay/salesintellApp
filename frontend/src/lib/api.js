@@ -155,5 +155,16 @@ export const api = {
   getIntel: async (code) => (await get(`/api/intel/${code}`)).updates,
   saveIntel: async (code, proposal) => toPrep(await post(`/api/intel/${code}`, proposal)),
   deleteIntel: async (code, id) => toPrep(await post(`/api/intel/${code}/delete`, { id })),
+
+  // A business we visited that isn't in Unleashed yet. checkProspect only
+  // looks (and returns possible duplicates); createProspect writes it.
+  checkProspect: (name) => post("/api/prospects/check", { name }),
+  createProspect: (prospect) => post("/api/prospects/create", prospect),
+};
+
+export const PROSPECT_OUTCOME = {
+  NEW: "new",
+  POSSIBLE_DUPLICATE: "possible_duplicate",
+  EXISTS: "exists",
 };
 export { whenPhrase };

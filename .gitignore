@@ -67,6 +67,8 @@ reports/
 feedback/
 # Per-customer live intel (summarised WhatsApp updates)
 notes/
+# Businesses reps created in Unleashed from a visit (runtime state)
+prospects/
 
 # Logs
 *.log

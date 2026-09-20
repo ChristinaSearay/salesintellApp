@@ -23,7 +23,17 @@ DATA_SOURCE = os.environ.get("SEARAY_DATA_SOURCE", DataSource.UNLEASHED)
 # so CSV mode keeps that fixed anchor (confirmed with business owner) — which
 # also keeps the CSV regression numbers stable.
 CSV_SNAPSHOT_DATE = date(2026, 6, 17)
-ANCHOR_DATE = date.today() if DATA_SOURCE == DataSource.UNLEASHED else CSV_SNAPSHOT_DATE
+
+
+def anchor_date() -> date:
+    """Today in live mode, the export snapshot in CSV mode.
+
+    A function, not a constant: the server is long-running, and a module-level
+    date.today() froze the anchor at process start — "days since last order"
+    silently stopped advancing until the next deploy. Callers must read it per
+    request; utils.recommend rebuilds its engine cache when this changes.
+    """
+    return date.today() if DATA_SOURCE == DataSource.UNLEASHED else CSV_SNAPSHOT_DATE
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(BASE_DIR, "Example Data")
@@ -33,6 +43,10 @@ REPORTS_DIR = os.path.join(BASE_DIR, "reports")
 FEEDBACK_DIR = os.environ.get("SEARAY_FEEDBACK_DIR") or os.path.join(BASE_DIR, "feedback")
 # Per-customer live intel (summarised WhatsApp updates) layered over meeting notes.
 NOTES_DIR = os.environ.get("SEARAY_NOTES_DIR") or os.path.join(BASE_DIR, "notes")
+# Businesses the reps created in Unleashed from a visit. Kept locally too, so
+# they show up in the app straight away instead of only after the next sync
+# (and so we don't offer to create the same shop twice the same day).
+PROSPECTS_DIR = os.environ.get("SEARAY_PROSPECTS_DIR") or os.path.join(BASE_DIR, "prospects")
 
 # 24-month lookback window for RFM (informational; the exports are already
 # scoped to ~2 years by Unleashed).

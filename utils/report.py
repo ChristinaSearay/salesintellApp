@@ -5,7 +5,7 @@ report quotes live product facts rather than duplicating them.
 """
 from typing import Callable, Optional, Tuple
 
-from constants.config import ANCHOR_DATE
+from constants.config import anchor_date
 from constants.recommended_actions import Action, CUSTOMER_KIND
 from utils.profile import CustomerProfile
 
@@ -64,7 +64,7 @@ def render(profile: CustomerProfile, actions, resolve: Resolver) -> str:
         parts = [x for x in (p.contact.name, p.contact.phone, p.contact.email) if x]
         out.append(f"**Contact:** {' · '.join(parts)}  ")
     out.append(
-        f"*Snapshot: Unleashed exports as of {ANCHOR_DATE:%d %b %Y}. "
+        f"*Snapshot: Unleashed exports as of {anchor_date():%d %b %Y}. "
         f"POC — recommended actions are proposals pending head-office approval.*"
     )
     out.append("")
@@ -146,7 +146,7 @@ def render(profile: CustomerProfile, actions, resolve: Resolver) -> str:
     out.append("---")
     out.append(
         "*Data: Unleashed Products, View Products, Sales Enquiry & Invoice Enquiry exports "
-        f"(as of {ANCHOR_DATE:%d %b %Y}) + meeting notes. Monetary = gross invoiced (returns not netted). "
+        f"(as of {anchor_date():%d %b %Y}) + meeting notes. Monetary = gross invoiced (returns not netted). "
         "Balance is a manual head-office input (not in Unleashed).*"
     )
     return "\n".join(out)

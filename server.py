@@ -30,6 +30,7 @@ from constants.feedback import RejectionReason
 from constants.intel import IntelSource
 from utils.attention import attention_payload
 from utils.intel import IntelUpdate, add_note, add_update, delete_update
+from utils.prospects import check as prospect_check, create as create_prospect
 from utils.recommend import (
     actions_payload,
     customer_list,
@@ -121,6 +122,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._post_intel(parts)
         if len(parts) == 4 and parts[0] == "api" and parts[1] == "attention" and parts[3] == "note":
             return self._post_note(parts)
+        if len(parts) == 3 and parts[0] == "api" and parts[1] == "prospects":
+            return self._post_prospect(parts[2])
         if len(parts) == 4 and parts[0] == "api" and parts[1] == "customer":
             code = self._code_from(parts)
             if not code:
@@ -139,6 +142,47 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as exc:  # never 500 silently in a demo
                 return self._json({"error": str(exc)}, status=500)
         self.send_error(404)
+
+    def _post_prospect(self, action):
+        """A business the rep visited that isn't in Unleashed yet.
+
+        'check' only looks; 'create' writes the customer to Unleashed and files
+        the visit note against it. Split in two so the rep always sees the
+        possible duplicates before anything reaches the ERP.
+        """
+        try:
+            body = self._read_body()
+        except json.JSONDecodeError:
+            return self._json({"error": "bad json"}, status=400)
+        try:
+            if action == "check":
+                found = prospect_check(body.get("name", ""))
+                return self._json({
+                    "outcome": found.outcome.value,
+                    "name": found.name,
+                    "suggestedCode": found.suggested_code,
+                    "matches": [{"code": m.code, "name": m.name, "score": m.score}
+                                for m in found.matches],
+                })
+            if action == "create":
+                created = create_prospect(
+                    body.get("name", ""),
+                    code=body.get("code", ""),
+                    contact_name=body.get("contactName", ""),
+                    phone=body.get("phone", ""),
+                    email=body.get("email", ""),
+                )
+                note = (body.get("note") or "").strip()
+                if note:
+                    add_note(created["code"], note)
+                return self._json({**created, "noteSaved": bool(note)})
+        except ValueError as exc:            # rep-fixable: bad name, code taken
+            return self._json({"error": str(exc)}, status=400)
+        except RuntimeError as exc:          # Unleashed rejected or unreachable
+            return self._json({"error": str(exc)}, status=502)
+        except Exception as exc:
+            return self._json({"error": str(exc)}, status=500)
+        return self.send_error(404)
 
     def _post_note(self, parts):
         code = self._code_from(parts)

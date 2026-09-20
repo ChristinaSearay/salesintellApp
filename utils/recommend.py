@@ -7,6 +7,7 @@ learning always applies.
 """
 from typing import Dict, List, Optional
 
+from constants.config import anchor_date
 from constants.feedback import ActionKind, IncentiveType
 from constants.intel import (
     LIVE_CHURN_RETENTION_BOOST,
@@ -32,7 +33,12 @@ _CACHE: dict = {}
 
 
 def _engine() -> dict:
-    if not _CACHE:
+    # Keyed on the anchor date: profiles bake in recency and RFM scores, so a
+    # long-running server must rebuild them when the day rolls over, or every
+    # "days since last order" stays frozen at whenever the process started.
+    today = anchor_date()
+    if not _CACHE or _CACHE.get("anchor") != today:
+        _CACHE.clear()
         master = load_product_master()
         catalogue = load_catalogue(master)
         resolve = make_resolver(master, catalogue)
@@ -41,7 +47,7 @@ def _engine() -> dict:
                  for code, p in profiles.items()}
         groups = sorted({i.group for i in catalogue if i.group})
         _CACHE.update(resolve=resolve, profiles=profiles, pools=pools,
-                      catalogue=catalogue, groups=groups)
+                      catalogue=catalogue, groups=groups, anchor=today)
     return _CACHE
 
 

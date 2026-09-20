@@ -16,7 +16,7 @@ from constants.columns import (
     SalesCol,
     SalesStatus,
 )
-from constants.config import ANCHOR_DATE
+from constants.config import anchor_date
 from constants.customers import Customer
 from constants.meeting_notes import MeetingContext
 from utils.intel import effective_context
@@ -233,7 +233,7 @@ def build_profiles(codes: Optional[Iterable[str]] = None) -> List[CustomerProfil
         # --- Recency / Frequency from orders ---
         order_dates = [d for d in (parse_date(r.get(SalesCol.ORDER_DATE)) for r in s_rows) if d]
         last_order = max(order_dates) if order_dates else None
-        recency = days_between(last_order, ANCHOR_DATE)
+        recency = days_between(last_order, anchor_date())
         distinct_orders = {(r.get(SalesCol.ORDER_NO) or "").strip() for r in s_rows}
         frequency = len(distinct_orders)
         product_orders = _product_order_codes(s_rows)
@@ -247,7 +247,10 @@ def build_profiles(codes: Optional[Iterable[str]] = None) -> List[CustomerProfil
         r = score_recency(recency)
         f = score_frequency(frequency)
         m = score_monetary(monetary)
-        segment = rfm_segment(r, f)
+        # Never ordered and never invoiced: they aren't lapsed, we just haven't
+        # sold to them yet (a shop a rep visited and created, typically).
+        segment = (Segment.NEW_PROSPECT if not order_dates and not i_rows
+                   else rfm_segment(r, f))
         notes = effective_context(code)  # meeting notes + live WhatsApp intel
         relationship = notes.relationship if notes else RelationshipFlag.NONE
 

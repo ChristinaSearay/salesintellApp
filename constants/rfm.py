@@ -30,6 +30,9 @@ class Segment(Enum):
     AT_RISK = "At Risk"
     ABOUT_TO_SLEEP = "About to Sleep"
     HIBERNATING = "Hibernating / Lost"
+    # Never traded with us: a shop a rep visited and created, or a record that
+    # has never ordered. "Hibernating / Lost" reads as a customer we let slip.
+    NEW_PROSPECT = "New — no orders yet"
 
 
 # Score thresholds used by the segment grid (named, not magic).

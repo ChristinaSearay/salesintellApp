@@ -18,7 +18,7 @@ from constants.feedback import (
     PriceBand,
     price_band,
 )
-from constants.config import ANCHOR_DATE
+from constants.config import anchor_date
 from constants.recommended_actions import RECOMMENDED_ACTIONS, Pitch
 from constants.repeat import (
     GROUP_DUE_RATIO,
@@ -184,7 +184,7 @@ def _whitespace_candidate(code: str, group: str, rep: CatalogueItem, count: int)
 
 def _reorder_candidate(code: str, cad: Cadence, item: CatalogueItem, lapsed: bool) -> Candidate:
     """A specific line of theirs that is due (or overdue) to come round again."""
-    days = cad.days_since(ANCHOR_DATE)
+    days = cad.days_since(anchor_date())
     last = f"{cad.last_bought:%d %b %Y}"
     if lapsed:
         title = f"They've stopped reordering: {cad.group}"
@@ -219,7 +219,7 @@ def _reorder_candidate(code: str, cad: Cadence, item: CatalogueItem, lapsed: boo
 
 def _restock_candidate(code: str, cad: Cadence, item: CatalogueItem) -> Candidate:
     """A whole range they buy on a rhythm that has gone quiet."""
-    days = cad.days_since(ANCHOR_DATE)
+    days = cad.days_since(anchor_date())
     return Candidate(
         id=f"{code}-restock-{_slug(cad.group)}",
         title=f"Time to restock {cad.group}",
@@ -336,7 +336,7 @@ def build_candidate_pool(profile, catalogue: List[CatalogueItem], resolve: Resol
     items_cad = item_cadences(profile.purchases)
     reorder_groups = set()
     added = lapsed_added = 0
-    for cad in due(items_cad, ANCHOR_DATE, ITEM_DUE_RATIO):
+    for cad in due(items_cad, anchor_date(), ITEM_DUE_RATIO):
         if added >= MAX_REORDER:
             break
         item = cat_by_code.get(cad.key)
@@ -344,8 +344,8 @@ def build_candidate_pool(profile, catalogue: List[CatalogueItem], resolve: Resol
             continue
         # Only a line with a real history can have "stopped"; a thin one that
         # quiet is simply stale, and pitching it as a reorder would be a guess.
-        lapsed = cad.is_lapsed(ANCHOR_DATE) and cad.times_bought >= MIN_LAPSED_PURCHASE_DATES
-        if not lapsed and cad.days_since(ANCHOR_DATE) > MAX_DUE_DAYS:
+        lapsed = cad.is_lapsed(anchor_date()) and cad.times_bought >= MIN_LAPSED_PURCHASE_DATES
+        if not lapsed and cad.days_since(anchor_date()) > MAX_DUE_DAYS:
             continue
         if lapsed and lapsed_added >= MAX_LAPSED_CARDS:
             continue
@@ -358,12 +358,12 @@ def build_candidate_pool(profile, catalogue: List[CatalogueItem], resolve: Resol
 
     # Then whole ranges that have gone quiet (skipping groups covered above).
     added = 0
-    for cad in due(group_cadences(profile.purchases), ANCHOR_DATE, GROUP_DUE_RATIO):
+    for cad in due(group_cadences(profile.purchases), anchor_date(), GROUP_DUE_RATIO):
         if added >= MAX_GROUP_RESTOCK:
             break
         if cad.group in reorder_groups or not can_add(cad.group):
             continue
-        if cad.days_since(ANCHOR_DATE) - (cad.interval_days or 0) < MIN_RESTOCK_OVERDUE_DAYS:
+        if cad.days_since(anchor_date()) - (cad.interval_days or 0) < MIN_RESTOCK_OVERDUE_DAYS:
             continue
         item = _restock_pick(cad, items_cad, cat_by_code, catalogue, used_products)
         if not item:

@@ -9,6 +9,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { api, whenPhrase } from "@/lib/api";
+import NewCustomer from "@/components/NewCustomer";
 
 const RELATIONSHIP_LABEL = {
   CHURN_RISK: { icon: "👋", label: "May be leaving us", cls: "bg-danger-soft text-danger" },
@@ -18,10 +19,11 @@ const RELATIONSHIP_LABEL = {
   OCCASIONAL: { icon: "🛒", label: "Buys now & then", cls: "bg-muted text-muted-foreground" },
 };
 
-function Proposal({ p, accounts, onSave, onDiscard, saving }) {
+function Proposal({ p, accounts, onSave, onDiscard, saving, onCreated }) {
   const [code, setCode] = useState(p.customer_code || "");
   const rel = RELATIONSHIP_LABEL[p.relationship];
-  const unmatched = !p.customer_code;
+  // Once the rep creates (or links) the business, this stops being unmatched.
+  const unmatched = !code;
   return (
     <motion.article
       layout
@@ -55,9 +57,19 @@ function Proposal({ p, accounts, onSave, onDiscard, saving }) {
         ))}
       </select>
       {unmatched && (
-        <p className="mt-1.5 text-[12px] text-muted-foreground">
-          Written as “{p.customer_as_written}” — not in the app’s customer list. Pick one above only if it’s a nickname.
-        </p>
+        <>
+          <p className="mt-1.5 text-[12px] text-muted-foreground">
+            Written as “{p.customer_as_written}” — not in the app’s customer list. Pick one above if it’s a
+            nickname, or add them to Unleashed below.
+          </p>
+          {p.customer_as_written && (
+            <NewCustomer
+              name={p.customer_as_written}
+              onLink={(picked) => setCode(picked)}
+              onCreated={(made) => { setCode(made.code); onCreated?.(made); }}
+            />
+          )}
+        </>
       )}
 
       <ul className="mt-3 flex flex-col gap-2">
@@ -120,6 +132,16 @@ function InboxInner() {
   useEffect(() => {
     if (focusCode) api.getIntel(focusCode).then(setHistory).catch(() => {});
   }, [focusCode, saved.length]);
+
+  // A brand-new customer must appear in the "file this under" list straight
+  // away, or the rep can't save the very update that created them.
+  function onProspectCreated(made) {
+    setAccounts((list) =>
+      list.some((a) => a.code === made.code)
+        ? list
+        : [...list, { code: made.code, name: made.name }]);
+    api.getAccounts().then(setAccounts).catch(() => {});
+  }
 
   async function summarise() {
     setErr(null);
@@ -208,6 +230,7 @@ function InboxInner() {
                 accounts={accounts}
                 saving={savingId === p.id}
                 onSave={save}
+                onCreated={onProspectCreated}
                 onDiscard={() => setProposals((ps) => ps.filter((x) => x.id !== p.id))}
               />
             ))}
