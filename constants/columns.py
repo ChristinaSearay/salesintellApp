@@ -63,4 +63,14 @@ class ViewCol:
 # Sentinel values found in the data (not magic strings in logic).
 class SalesStatus:
     COMPLETED = "Completed"
+    BACKORDERED = "Backordered"   # committed, waiting on stock — often the big ones
+    PLACED = "Placed"             # committed, not yet picked
+    PARKED = "Parked"             # a draft/quote the customer hasn't committed to
     TOTALS_FOOTER = "Totals"  # a stray summary row to ignore
+
+    # What counts as "they ordered" for recency, order counts and the
+    # needs-attention queue. Backorders and placed orders are real commitments,
+    # so excluding them made big customers look lapsed the week they ordered
+    # (Evans Jewellery, $58k backordered 08/09/2026). Parked is a draft, so it
+    # stays out. An allow-list, so any unexpected status is excluded by default.
+    COUNTED = frozenset({COMPLETED, BACKORDERED, PLACED})

@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-09-21
+
+### Fixed
+- Backordered and placed orders now count as orders (`SalesStatus.COUNTED`): the Unleashed sync asked for `orderStatus=Completed`, so committed-but-unshipped orders were invisible — 25 customers had a wrong last-order date (worst 681 days out) and $1,075,849 across 104 orders was missing.
+
+### Changed
+- `fetch_sales_orders` pulls every status and the engine decides what counts, so the policy can change without a re-sync; parked drafts stay excluded.
+- Refreshed the Unleashed cache (`data/`) to 2026-09-19.
+
 ## 2026-09-17 (3)
 
 ### Changed

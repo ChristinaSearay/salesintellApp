@@ -83,7 +83,13 @@ def fetch_stock_on_hand() -> list:
 
 
 def fetch_sales_orders(start_date: str | None = None) -> list:
-    params = {"orderStatus": "Completed"}          # VERIFY filter name/values
+    """Every order since start_date, whatever its status.
+
+    Deliberately unfiltered: the engine decides what counts as an order
+    (SalesStatus.COUNTED), so the policy can change without a re-sync. Asking
+    Unleashed for Completed only used to hide backorders entirely.
+    """
+    params = {}
     if start_date:
         params["startDate"] = start_date            # VERIFY filter name
     return fetch_all(Endpoint.SALES_ORDERS, params)

@@ -106,8 +106,8 @@ def _bucket_sales(codes: frozenset):
     """One pass over the sales file -> {code: [rows]} for the wanted customers."""
     buckets: Dict[str, list] = defaultdict(list)
     for row in sales_rows():
-        if row.get(SalesCol.STATUS) != SalesStatus.COMPLETED:
-            continue  # skips the stray 'Totals' footer too
+        if row.get(SalesCol.STATUS) not in SalesStatus.COUNTED:
+            continue  # skips parked drafts and the stray 'Totals' footer too
         code = (row.get(SalesCol.CUSTOMER_CODE) or "").strip()
         if code in codes:
             buckets[code].append(row)

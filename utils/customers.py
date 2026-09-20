@@ -25,7 +25,7 @@ def load_customers() -> Dict[str, Customer]:
     codes = set(TARGET_BY_CODE)
     for row in sales_rows():
         code = _clean(row.get(SalesCol.CUSTOMER_CODE))
-        if code and row.get(SalesCol.STATUS) == SalesStatus.COMPLETED:
+        if code and row.get(SalesCol.STATUS) in SalesStatus.COUNTED:
             codes.add(code)
 
     invoice_names: Dict[str, tuple] = {}  # code -> (date, name) of latest invoice
