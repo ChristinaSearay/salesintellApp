@@ -58,6 +58,14 @@ export default function Pitch({ pitch: p, index, reasons, mark, onDecision, onTo
           {p.title}
         </h3>
 
+        {/* A rep's own idea, here or borrowed from a shop in the same
+            situation — say whose it is, so nobody runs a pitch blind. */}
+        {p.origin && (
+          <p className="mt-1.5 text-[12px] font-medium text-primary">
+            <span aria-hidden>💡</span> {p.origin}
+          </p>
+        )}
+
         {p.products?.length > 0 && (
           <ul className="mt-3 flex flex-col gap-2">
             {p.products.map((pr, i) => (

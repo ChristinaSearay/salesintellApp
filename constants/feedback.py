@@ -40,6 +40,7 @@ class ActionKind(Enum):
     RELATIONSHIP = "Relationship"
     STRUCTURAL = "Commercial terms"
     EQUIPMENT = "Equipment"
+    REP_IDEA = "Rep idea"       # the rep's own pitch, reused (utils/playbook.py)
     GENERAL = "General"
 
 
@@ -89,6 +90,7 @@ KIND_BASE_SCORE = {
     ActionKind.RETENTION: 75.0,
     ActionKind.REORDER: 72.0,   # their own buying rhythm — the most concrete ask
     ActionKind.EQUIPMENT: 68.0,
+    ActionKind.REP_IDEA: 70.0,  # see IDEA_BASE_SCORE — confidence scales it
     ActionKind.UPSELL: 65.0,
     ActionKind.STRUCTURAL: 60.0,
     ActionKind.WHITESPACE: 55.0,

@@ -72,6 +72,7 @@ class Candidate:
     grounded_in: str = ""
     price_point: Optional[float] = None  # max product price; None = not price-filterable
     is_seed: bool = False
+    origin: str = ""                     # "Your idea from <customer>" — rep playbook only
 
     @property
     def price_band(self) -> Optional[PriceBand]:

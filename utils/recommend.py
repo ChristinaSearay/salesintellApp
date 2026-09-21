@@ -14,10 +14,11 @@ from constants.intel import (
     LIVE_CHURN_SELL_DEMOTE,
     LIVE_OPPORTUNITY_BONUS,
 )
+from constants.playbook import IDEA_BASE_SCORE, IDEA_ID_MARKER, IdeaOrigin
 from constants.recommended_actions import CUSTOMER_KIND
 from constants.rfm import RelationshipFlag
 from utils.candidates import Candidate, build_candidate_pool, opportunity_candidates
-from utils import mute
+from utils import mute, playbook
 from utils.intel import effective_context, latest_update, live_hook_set, load_updates
 from utils.preferences import (
     apply_acceptance,
@@ -117,8 +118,39 @@ def _live_candidates(code: str) -> List[Candidate]:
     return out
 
 
+def _idea_candidates(code: str) -> List[Candidate]:
+    """The rep playbook (utils/playbook.py): what a rep pitched here themselves,
+    plus ideas they wrote on customers in the same situation. Computed per
+    request, like live intel, so an idea saved on one visit is in play on the
+    next one without a restart."""
+    profile = _engine()["profiles"][code]
+    out = []
+    for idea, origin in playbook.for_customer(profile):
+        own = origin is IdeaOrigin.OWN
+        out.append(Candidate(
+            id=f"{code}{IDEA_ID_MARKER}{idea.id}",
+            title=idea.title,
+            detail=idea.detail,
+            kind=ActionKind.REP_IDEA,
+            incentive_type=IncentiveType.NONE,
+            # Confidence is global: an idea other reps took up outranks a fresh one.
+            base_score=IDEA_BASE_SCORE * (1.0 if own else idea.confidence),
+            groups=idea.groups,
+            grounded_in=f"Rep idea recorded on {idea.origin_name} ({idea.when}).",
+            origin=("Your idea, recorded " + idea.when if own
+                    else f"Your idea from {idea.origin_name} — same situation"),
+        ))
+    return out
+
+
 def _live_pool(code: str) -> List[Candidate]:
-    return _engine()["pools"][code] + _live_candidates(code)
+    return _engine()["pools"][code] + _live_candidates(code) + _idea_candidates(code)
+
+
+def record_idea(code: str, title: str, detail: str = "", n: int = 3) -> dict:
+    """The rep pitched something of their own. Save it and re-rank."""
+    playbook.record(_engine()["profiles"][code], title, detail)
+    return actions_payload(code, n)
 
 
 def _tilt_for_relationship(code: str, profile):
@@ -163,6 +195,7 @@ def candidate_to_json(c: Candidate) -> dict:
         "groups": list(c.groups),
         "products": products,
         "is_seed": c.is_seed,
+        "origin": c.origin,
     }
 
 
@@ -257,6 +290,12 @@ def actions_payload(code: str, n: int = 3) -> dict:
 
 # --- Applying feedback from the UI -----------------------------------------
 
+def _note_idea(candidate_id: str, accepted: bool) -> None:
+    """A tap on a playbook card is the only thing that changes how far that
+    idea travels — every rep's taps, not just this customer's."""
+    if IDEA_ID_MARKER in (candidate_id or ""):
+        playbook.note_outcome(candidate_id.split(IDEA_ID_MARKER)[-1], accepted)
+
 def submit_feedback(code: str, accepted_ids: List[str], rejections: List[dict],
                     n: int = 3) -> dict:
     """rejections: [{id, reasons:[ReasonName], note}]. Persists, returns the
@@ -267,11 +306,13 @@ def submit_feedback(code: str, accepted_ids: List[str], rejections: List[dict],
 
     for acc in accepted_ids or []:
         apply_acceptance(profile, acc)
+        _note_idea(acc, accepted=True)
 
     for rej in rejections or []:
         cand = by_id.get(rej.get("id"))
         if not cand:
             continue
+        _note_idea(rej.get("id"), accepted=False)
         reasons = []
         for rname in rej.get("reasons", []):
             try:

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-21 (5)
+
+### Added
+- The rep playbook: "I pitched my own idea" on a visit records what the rep actually pitched, and offers it on other customers in the same situation — same RFM segment and at least one product group in common — labelled with where it came from (`utils/playbook.py`, `constants/playbook.py`, `ActionKind.REP_IDEA`, `POST /api/customer/<code>/idea`).
+- An idea learns globally from every rep's pitch/skip taps: confidence rises with each accept, falls with each skip, and an idea below `RETIRE_BELOW` stops being offered to anyone new.
+
 ## 2026-09-21 (4)
 
 ### Added

@@ -25,6 +25,7 @@ const KIND = {
   "Retention": "Save the account", "Reorder": "Due to reorder",
   "Upsell": "Add to their order",
   "New category": "Try something new", "Relationship": "Build trust",
+  "Rep idea": "Your own idea",
   "Commercial terms": "New deal structure", "Equipment": "Sell equipment",
   "General": "Idea",
 };
@@ -114,6 +115,8 @@ function toPitch(a) {
     badge: KIND[a.kind] || a.kind,
     title: a.title,
     blurb: a.detail,
+    // "Your idea from Leon Baker — same situation" (rep playbook); "" otherwise.
+    origin: a.origin || "",
     products: (a.products || []).map((p) => ({
       name: p.desc, code: p.code, price: money(p.price), inStock: p.stock === "In stock",
     })),
@@ -166,6 +169,10 @@ export const api = {
   sendFeedback: async (code, accepted, rejections) =>
     toPrep(await post(`/api/customer/${code}/feedback`, { accepted, rejections })),
   reset: async (code) => toPrep(await post(`/api/customer/${code}/reset`, {})),
+  // The rep pitched something of their own — recorded and reused on customers
+  // in the same situation (utils/playbook.py).
+  saveIdea: async (code, title, detail) =>
+    toPrep(await post(`/api/customer/${code}/idea`, { title, detail })),
   // Live intel (WhatsApp dumps → summarised updates)
   summarise: async (text) => (await post("/api/intel/summarise", { text, source: "whatsapp" })).proposals,
   getIntel: async (code) => (await get(`/api/intel/${code}`)).updates,

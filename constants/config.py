@@ -41,6 +41,10 @@ REPORTS_DIR = os.path.join(BASE_DIR, "reports")
 # Per-customer learned preferences (rejection -> re-suggestion loop) live here.
 # Override with SEARAY_FEEDBACK_DIR to point at a persistent disk (e.g. on Render).
 FEEDBACK_DIR = os.environ.get("SEARAY_FEEDBACK_DIR") or os.path.join(BASE_DIR, "feedback")
+# Ideas the reps wrote themselves, reused across similar customers. A
+# sub-directory of the feedback dir (which is only ever read by customer code,
+# never scanned) so the deployed persistent disk covers it without another env var.
+PLAYBOOK_DIR = os.path.join(FEEDBACK_DIR, "playbook")
 # Per-customer live intel (summarised WhatsApp updates) layered over meeting notes.
 NOTES_DIR = os.environ.get("SEARAY_NOTES_DIR") or os.path.join(BASE_DIR, "notes")
 # Accounts a rep asked us to stop reminding them about ("do not alert again").

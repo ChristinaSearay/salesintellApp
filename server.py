@@ -16,6 +16,7 @@ API:
   GET  /api/customer/<code>              -> customer + current 3 actions
   POST /api/customer/<code>/feedback     -> {accepted:[id], rejections:[{id,reasons,note}]}
   POST /api/customer/<code>/reset        -> clear that customer's learning
+  POST /api/customer/<code>/idea         -> {title, detail?} -> the rep's own pitch, reused on similar customers
   POST /api/intel/summarise              -> {text, source?} -> proposed updates (not saved)
   GET  /api/intel/<code>                 -> saved live updates for a customer
   POST /api/intel/<code>                 -> save one update (body = a proposal) -> refreshed prep
@@ -38,6 +39,7 @@ from utils.recommend import (
     group_names,
     intel_payload,
     is_known_customer,
+    record_idea,
     reset,
     submit_feedback,
 )
@@ -146,6 +148,13 @@ class Handler(BaseHTTPRequestHandler):
                         code, body.get("accepted", []), body.get("rejections", [])))
                 if parts[3] == "reset":
                     return self._json(reset(code))
+                if parts[3] == "idea":
+                    # The rep pitched something of their own — it joins the
+                    # playbook and travels to similar customers.
+                    return self._json(record_idea(
+                        code, body.get("title", ""), body.get("detail", "")))
+            except ValueError as exc:                 # rep-fixable: empty idea
+                return self._json({"error": str(exc)}, status=400)
             except Exception as exc:  # never 500 silently in a demo
                 return self._json({"error": str(exc)}, status=500)
         self.send_error(404)

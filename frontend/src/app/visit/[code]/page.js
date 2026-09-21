@@ -27,6 +27,10 @@ export default function VisitPage({ params }) {
   const [marks, setMarks] = useState({});
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
+  const [ideaOpen, setIdeaOpen] = useState(false);
+  const [ideaTitle, setIdeaTitle] = useState("");
+  const [ideaDetail, setIdeaDetail] = useState("");
+  const [ideaErr, setIdeaErr] = useState(null);
   const backHref = useBackHref();
 
   useEffect(() => {
@@ -64,6 +68,24 @@ export default function VisitPage({ params }) {
       setPrep(p);
       setMarks(initMarks(p));
       window.scrollTo({ top: 0, behavior: "smooth" });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveIdea() {
+    setBusy(true);
+    setIdeaErr(null);
+    try {
+      const p = await api.saveIdea(code, ideaTitle.trim(), ideaDetail.trim());
+      setPrep(p);
+      setMarks(initMarks(p));
+      setIdeaOpen(false);
+      setIdeaTitle("");
+      setIdeaDetail("");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (e) {
+      setIdeaErr(String(e.message || e));
     } finally {
       setBusy(false);
     }
@@ -259,6 +281,62 @@ export default function VisitPage({ params }) {
             ))
           )}
         </div>
+
+        {/* The rep's own pitch. Recorded here, then offered to shops in the
+            same situation — the half of the loop that only learned from
+            rejections before. */}
+        {ideaOpen ? (
+          <div className="mt-3.5 rounded-3xl border border-primary/25 bg-secondary/60 p-4">
+            <h3 className="text-[13px] font-semibold text-primary">
+              <span aria-hidden>💡</span> What did you pitch instead?
+            </h3>
+            <input
+              value={ideaTitle}
+              onChange={(e) => setIdeaTitle(e.target.value)}
+              autoFocus
+              placeholder="Your idea in one line"
+              className="mt-2.5 h-11 w-full rounded-xl border border-border bg-background px-3 text-[16px] text-foreground outline-none placeholder:text-muted-foreground/70 focus:ring-2 focus:ring-primary/30"
+            />
+            <textarea
+              value={ideaDetail}
+              onChange={(e) => setIdeaDetail(e.target.value)}
+              rows={2}
+              placeholder="How you'd run it (optional)"
+              className="mt-2 w-full rounded-xl border border-border bg-background p-3 text-[15px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/70 focus:ring-2 focus:ring-primary/30"
+            />
+            <p className="mt-2 text-[12px] leading-snug text-muted-foreground">
+              Saved for {a.name} and offered on other {prep.account.status.toLowerCase()} shops buying the
+              same ranges. It fades if reps keep skipping it.
+            </p>
+            {ideaErr && <p className="mt-1.5 text-[13px] font-medium text-danger">{ideaErr}</p>}
+            <div className="mt-2.5 flex gap-2">
+              <button
+                type="button"
+                onClick={saveIdea}
+                disabled={busy || !ideaTitle.trim()}
+                className="h-11 flex-1 rounded-xl bg-primary text-[14px] font-semibold text-primary-foreground transition active:scale-[0.99] disabled:opacity-50"
+              >
+                {busy ? "Saving…" : "Save my idea"}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setIdeaOpen(false); setIdeaErr(null); }}
+                disabled={busy}
+                className="h-11 rounded-xl px-4 text-[14px] font-semibold text-muted-foreground ring-1 ring-border"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setIdeaOpen(true)}
+            className="mt-3.5 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-card text-[14px] font-semibold text-foreground ring-1 ring-primary/25 transition active:scale-[0.99]"
+          >
+            <span aria-hidden>✍️</span> I pitched my own idea
+          </button>
+        )}
       </section>
 
       {/* sticky action */}
