@@ -211,7 +211,7 @@ function InboxInner() {
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={7}
-          placeholder={"CLASS A JEWELLERS\nStill placing orders weekly although Brad told Christina he would never deal with Searay again…"}
+          placeholder={"CLASS A JEWELLERS\nConfirmed they are interested in sample tennis bracelets but require finish to be very high quality"}
           className="w-full rounded-3xl border border-border bg-card p-4 text-[15px] leading-relaxed text-foreground shadow-[0_8px_24px_-18px_rgba(33,29,23,0.5)] outline-none placeholder:text-muted-foreground/70 focus:ring-2 focus:ring-primary/30"
         />
         <button

@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-09-21 (6)
+
+### Changed
+- The WhatsApp updates box now shows a sample update about tennis bracelet samples instead of a customer refusing to deal with us.
+
 ## 2026-09-21 (5)
 
 ### Added
