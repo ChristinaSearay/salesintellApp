@@ -51,6 +51,19 @@ def invoice_rows() -> list:
     return _rows("invoices.json", INVOICE_FILE)
 
 
+def credit_rows() -> list:
+    """Credit-note rows (what the customer sent back). Unleashed sync only —
+    the CSV exports contain no credit lines at all, which is exactly why spend
+    read as gross invoiced until now. Missing cache means [] rather than an
+    error, so an older cache still runs (it just can't net anything off)."""
+    if not _using_unleashed:
+        return []
+    try:
+        return _cache("credits.json")
+    except RuntimeError:
+        return []
+
+
 def customer_rows() -> list:
     """Customer-master rows (contact name/phone/mobile/email). Unleashed sync
     only — there is no customers CSV export — and optional even there (older

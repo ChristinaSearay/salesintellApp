@@ -11,6 +11,8 @@ from datetime import date
 from typing import Dict, Iterable, List, Optional, Tuple
 
 from constants.columns import (
+    CreditCol,
+    CreditStatus,
     CustomerCol,
     InvoiceCol,
     SalesCol,
@@ -21,9 +23,14 @@ from constants.customers import Customer
 from constants.meeting_notes import MeetingContext
 from utils.intel import effective_context
 from constants.products import EXCLUDED_GROUPS, EXCLUDED_PRODUCT_CODES, canonical_group
+from constants.returns import (
+    HIGH_RETURN_RATE,
+    MIN_INVOICED_FOR_RATE,
+    MIN_NET_SPEND,
+)
 from constants.rfm import RelationshipFlag, Segment
 from utils.customers import load_customers
-from utils.datasource import customer_rows, invoice_rows, sales_rows
+from utils.datasource import credit_rows, customer_rows, invoice_rows, sales_rows
 from utils.products import (
     CatalogueItem,
     load_catalogue,
@@ -73,7 +80,9 @@ class CustomerProfile:
     recency_days: Optional[int]
     frequency: int           # distinct orders (all)
     product_order_count: int  # distinct orders containing a real product line
-    monetary: float          # gross invoiced, 24mo
+    monetary: float          # NET spend, 24mo: invoiced minus credits, floored at 0
+    invoiced: float          # gross invoiced, 24mo (what monetary used to be)
+    credited: float          # credit notes, 24mo — what they sent back
     sales_line_count: int
     # RFM outputs
     r: int
@@ -98,6 +107,20 @@ class CustomerProfile:
         return f"{self.r}{self.f}{self.m}"
 
     @property
+    def return_rate(self) -> float:
+        """Share of invoiced value sent back (0.0-1.0), or 0.0 when there isn't
+        enough invoiced to mean anything — one returned parcel against two
+        orders is 100% and tells a rep nothing."""
+        if self.invoiced < MIN_INVOICED_FOR_RATE:
+            return 0.0
+        return min(1.0, self.credited / self.invoiced)
+
+    @property
+    def heavy_returner(self) -> bool:
+        """Sends back enough that pitching more stock to sit on is a mistake."""
+        return self.return_rate >= HIGH_RETURN_RATE
+
+    @property
     def bought_group_names(self) -> set:
         return {g.name for g in self.bought_groups}
 
@@ -118,6 +141,19 @@ def _bucket_invoices(codes: frozenset):
     buckets: Dict[str, list] = defaultdict(list)
     for row in invoice_rows():
         code = (row.get(InvoiceCol.CUSTOMER_CODE) or "").strip()
+        if code in codes:
+            buckets[code].append(row)
+    return buckets
+
+
+def _bucket_credits(codes: frozenset):
+    """Completed credit notes per customer. A Parked credit is a draft nobody
+    has approved, so it hasn't given the customer their money back yet."""
+    buckets: Dict[str, list] = defaultdict(list)
+    for row in credit_rows():
+        if (row.get(CreditCol.STATUS) or "").strip() not in CreditStatus.COUNTED:
+            continue
+        code = (row.get(CreditCol.CUSTOMER_CODE) or "").strip()
         if code in codes:
             buckets[code].append(row)
     return buckets
@@ -222,6 +258,7 @@ def build_profiles(codes: Optional[Iterable[str]] = None) -> List[CustomerProfil
     catalogue = load_catalogue(master)
     sales = _bucket_sales(wanted_set)
     invoices = _bucket_invoices(wanted_set)
+    credits = _bucket_credits(wanted_set)
     contact_master = _customer_master(wanted_set)
 
     profiles: List[CustomerProfile] = []
@@ -229,6 +266,7 @@ def build_profiles(codes: Optional[Iterable[str]] = None) -> List[CustomerProfil
         customer = directory[code]
         s_rows = sales.get(code, [])
         i_rows = invoices.get(code, [])
+        c_rows = credits.get(code, [])
 
         # --- Recency / Frequency from orders ---
         order_dates = [d for d in (parse_date(r.get(SalesCol.ORDER_DATE)) for r in s_rows) if d]
@@ -238,8 +276,13 @@ def build_profiles(codes: Optional[Iterable[str]] = None) -> List[CustomerProfil
         frequency = len(distinct_orders)
         product_orders = _product_order_codes(s_rows)
 
-        # --- Monetary from invoices (gross) ---
-        monetary = sum(parse_money(r.get(InvoiceCol.TOTAL)) for r in i_rows)
+        # --- Monetary: invoiced MINUS credits ---
+        # Gross invoiced overstates a lot of these accounts — credits run at
+        # ~21% of invoiced across the base, and well over half on shops that
+        # order broadly and send back what doesn't sell.
+        invoiced = sum(parse_money(r.get(InvoiceCol.TOTAL)) for r in i_rows)
+        credited = sum(parse_money(r.get(CreditCol.TOTAL)) for r in c_rows)
+        monetary = max(MIN_NET_SPEND, invoiced - credited)
         inv_dates = [d for d in (parse_date(r.get(InvoiceCol.COMPLETED_DATE)) for r in i_rows) if d]
         last_invoice = max(inv_dates) if inv_dates else None
 
@@ -282,6 +325,8 @@ def build_profiles(codes: Optional[Iterable[str]] = None) -> List[CustomerProfil
             frequency=frequency,
             product_order_count=len(product_orders),
             monetary=monetary,
+            invoiced=invoiced,
+            credited=credited,
             sales_line_count=len(s_rows),
             r=r, f=f, m=m,
             segment=segment,

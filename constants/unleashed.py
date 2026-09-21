@@ -26,6 +26,7 @@ class Endpoint:
     STOCK_ON_HAND = "StockOnHand"
     SALES_ORDERS = "SalesOrders"
     INVOICES = "Invoices"
+    CREDIT_NOTES = "CreditNotes"
     CUSTOMERS = "Customers"
 
 

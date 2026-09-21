@@ -33,6 +33,7 @@ const KIND = {
 const money = (v) => (v == null ? "" : "$" + Math.round(v).toLocaleString());
 const moneyShort = (v) => (v == null ? "" : "$" + new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(v));
 const daysPhrase = (n) => (n == null ? "—" : n === 0 ? "today" : n === 1 ? "yesterday" : `${n} days ago`);
+const pct = (v) => `${Math.round((v || 0) * 100)}%`;
 
 async function get(url) {
   const r = await fetch(url);
@@ -69,6 +70,10 @@ export function toAccount(c) {
   const flag = FLAG[c.flag_key];
   if (flag) alerts.push({ icon: flag.icon, label: flag.label, tone: flag.tone });
   if (c.balance > 0) alerts.push({ icon: "💰", label: `Owes ${money(c.balance)}`, tone: "danger" });
+  // Sends a big share of it back. Spend already nets this off; the flag is so a
+  // rep doesn't pitch more stock to a shop that returns what doesn't sell.
+  if (c.heavy_returner)
+    alerts.push({ icon: "↩️", label: `Returns ${pct(c.return_rate)} of what they buy`, tone: "warn" });
   // Shape matches v0's components: status as a string + a top-level tone.
   const meta = [
     c.spend != null ? `${moneyShort(c.spend)} · 2yr` : "",
@@ -132,7 +137,13 @@ function toPrep(payload) {
     account: toAccount(c),
     contact: { name: contact.name || "", phone: contact.phone || "", email: contact.email || "" },
     stats: [
-      { label: "Spend · 2yr", value: moneyShort(c.spend) },
+      // Spend is invoiced minus credits. When they've sent anything back, show
+      // how much — otherwise the tile silently disagrees with their invoices.
+      {
+        label: "Spend · 2yr",
+        value: moneyShort(c.spend),
+        note: c.credited > 0 ? `after ${moneyShort(c.credited)} returned` : "",
+      },
       { label: "Last order", value: daysPhrase(c.last_order_days) },
       { label: "Orders · 2yr", value: String(c.orders) },
     ],

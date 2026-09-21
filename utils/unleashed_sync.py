@@ -13,7 +13,7 @@ import os
 import re
 from datetime import datetime, timedelta, timezone
 
-from constants.columns import CustomerCol, InvoiceCol, ProductCol, SalesCol, ViewCol
+from constants.columns import CreditCol, CustomerCol, InvoiceCol, ProductCol, SalesCol, ViewCol
 from constants.config import CACHE_DIR
 from constants.unleashed import LOOKBACK_DAYS
 from utils import unleashed as api
@@ -99,6 +99,29 @@ def map_invoices(invoices: list) -> list:
     return rows
 
 
+def map_credits(credits: list) -> list:
+    """Credit notes → invoice-shaped rows. Total stays POSITIVE: it is the
+    amount to subtract from invoiced, and profile.py does the subtracting.
+
+    Both credit types count. "Credit" returns stock against a named invoice;
+    "FreeCredit" credits the customer without one (their comments show the same
+    goods coming back, just not matched to an invoice) — either way the money
+    was handed back, which is what Christina means by "invoiced minus credits".
+    """
+    rows = []
+    for c in credits:
+        customer = c.get("Customer") or {}
+        rows.append({
+            CreditCol.TRANSACTION_NO: c.get("CreditNoteNumber", ""),
+            CreditCol.COMPLETED_DATE: _date(c.get("CreditDate")),
+            CreditCol.CUSTOMER_CODE: customer.get("CustomerCode", ""),
+            CreditCol.CUSTOMER_NAME: customer.get("CustomerName", ""),
+            CreditCol.TOTAL: c.get("Total", 0),
+            CreditCol.STATUS: c.get("Status", ""),
+        })
+    return rows
+
+
 def map_customers(customers: list) -> list:
     rows = []
     for c in customers:
@@ -135,16 +158,19 @@ def sync() -> None:
     stock = api.fetch_stock_on_hand()
     orders = api.fetch_sales_orders(start)
     invoices = api.fetch_invoices(start)
+    credits = api.fetch_credit_notes(start)
     customers = api.fetch_customers()
 
     _write("products.json", map_products(products))
     _write("view_products.json", map_view_products(stock, product_by_code))
     _write("sales.json", map_sales(orders, product_by_code))
     _write("invoices.json", map_invoices(invoices))
+    _write("credits.json", map_credits(credits))
     _write("customers.json", map_customers(customers))
 
     print(f"Synced to {CACHE_DIR}/  —  products={len(products)} stock={len(stock)} "
-          f"orders={len(orders)} invoices={len(invoices)} customers={len(customers)} "
+          f"orders={len(orders)} invoices={len(invoices)} credits={len(credits)} "
+          f"customers={len(customers)} "
           f"(since {start})")
     print("⚠ Eyeball data/*.json and fix any empty VERIFY-marked field, then set "
           "SEARAY_DATA_SOURCE=unleashed.")

@@ -21,10 +21,12 @@ def _date(d) -> str:
 
 
 def _monetary_caveat(p: CustomerProfile) -> str:
-    hooks = " ".join(p.notes.hooks).lower() if p.notes else ""
-    if "returns" in hooks or "consignment" in hooks:
-        return " _(gross; returns are not netted in the data — true retained revenue is lower)_"
-    return ""
+    """Spell out the netting when there is any, so the figure can be reconciled
+    against Unleashed's invoice total (which is gross)."""
+    if p.credited <= 0:
+        return ""
+    return (f" _({_money(p.invoiced)} invoiced less {_money(p.credited)} credited"
+            f" — {p.return_rate:.0%} returned)_")
 
 
 def _pitch_line(pitch, resolve: Resolver) -> str:
@@ -80,7 +82,7 @@ def render(profile: CustomerProfile, actions, resolve: Resolver) -> str:
     out.append("|---|---|---|")
     out.append(f"| **Recency** | {p.recency_days} days since last order ({_date(p.last_order_date)}) | **{p.r}** / 5 |")
     out.append(f"| **Frequency** | {p.frequency} distinct orders in 24 months | **{p.f}** / 5 |")
-    out.append(f"| **Monetary** | {_money(p.monetary)} invoiced in 24 months{_monetary_caveat(p)} | **{p.m}** / 5 |")
+    out.append(f"| **Monetary** | {_money(p.monetary)} net in 24 months{_monetary_caveat(p)} | **{p.m}** / 5 |")
     out.append("")
 
     # --- Balance flag ---
@@ -92,7 +94,7 @@ def render(profile: CustomerProfile, actions, resolve: Resolver) -> str:
 
     # --- Snapshot + kind ---
     snapshot = (
-        f"{p.frequency} orders and {_money(p.monetary)} invoiced over 24 months; "
+        f"{p.frequency} orders and {_money(p.monetary)} net of returns over 24 months; "
         f"last ordered {p.recency_days} days ago ({_date(p.last_order_date)}). "
         f"Scores **{seg}** on the numbers — {flag.split('—')[0].strip().lower() if flag else 'no qualitative flag'}."
     )
@@ -146,7 +148,7 @@ def render(profile: CustomerProfile, actions, resolve: Resolver) -> str:
     out.append("---")
     out.append(
         "*Data: Unleashed Products, View Products, Sales Enquiry & Invoice Enquiry exports "
-        f"(as of {anchor_date():%d %b %Y}) + meeting notes. Monetary = gross invoiced (returns not netted). "
+        f"(as of {anchor_date():%d %b %Y}) + meeting notes. Monetary = invoiced less credit notes. "
         "Balance is a manual head-office input (not in Unleashed).*"
     )
     return "\n".join(out)

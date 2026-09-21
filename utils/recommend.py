@@ -235,6 +235,13 @@ def customer_summary(code: str) -> dict:
         "last_order_days": p.recency_days,
         "orders": p.frequency,
         "spend": p.monetary,
+        # Spend is invoiced minus credits. Both halves ship so a rep can see
+        # WHY the number is lower than the invoices suggest, and so a shop that
+        # sends most of it back isn't pitched more stock to sit on.
+        "invoiced": p.invoiced,
+        "credited": p.credited,
+        "return_rate": p.return_rate,
+        "heavy_returner": p.heavy_returner,
         "top_groups": [g.name for g in p.bought_groups[:4]],
         "learned": learned_chips(profile),
         # "do not alert again" (utils/mute.py). This page is where a rep turns
@@ -268,6 +275,8 @@ def account_card(code: str) -> dict:
         "spend": p.monetary,
         "orders": p.frequency,
         "last_order_days": p.recency_days,
+        "return_rate": p.return_rate,
+        "heavy_returner": p.heavy_returner,
     }
 
 

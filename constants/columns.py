@@ -40,6 +40,29 @@ class InvoiceCol:
     TOTAL = "Total"
 
 
+class CreditCol:
+    """Credit notes (Unleashed only — the CSV exports have no credit lines).
+
+    Same shape as InvoiceCol so the two net against each other cleanly. TOTAL
+    is POSITIVE on a credit note, i.e. the amount to subtract from invoiced.
+    """
+    TRANSACTION_NO = "Credit Note No."
+    COMPLETED_DATE = "Completed Date"
+    CUSTOMER_CODE = "Customer Code"
+    CUSTOMER_NAME = "Customer Name"
+    TOTAL = "Total"
+    STATUS = "Status"
+
+
+class CreditStatus:
+    COMPLETED = "Completed"
+    PARKED = "Parked"   # a draft credit nobody has approved yet
+
+    # Only a completed credit has actually reduced what the customer owes us.
+    # An allow-list, matching SalesStatus.COUNTED's stance on Parked drafts.
+    COUNTED = frozenset({COMPLETED})
+
+
 class ProductCol:
     """File 1 - Products Export (product master / taxonomy)."""
     CODE = "*Product Code"

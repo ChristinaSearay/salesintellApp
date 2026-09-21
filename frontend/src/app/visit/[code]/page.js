@@ -204,6 +204,9 @@ export default function VisitPage({ params }) {
           <div key={i} className="rounded-2xl border border-border bg-card p-3 text-center shadow-[0_6px_18px_-16px_rgba(33,29,23,0.5)]">
             <div className="font-serif text-[19px] font-semibold leading-none text-foreground">{s.value}</div>
             <div className="mt-1.5 text-[11px] font-medium leading-tight text-muted-foreground">{s.label}</div>
+            {s.note && (
+              <div className="mt-0.5 text-[10px] leading-tight text-warn">{s.note}</div>
+            )}
           </div>
         ))}
       </section>

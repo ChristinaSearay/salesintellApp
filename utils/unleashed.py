@@ -132,5 +132,17 @@ def fetch_invoices(start_date: str | None = None) -> list:
     return fetch_all(Endpoint.INVOICES, params)
 
 
+def fetch_credit_notes(start_date: str | None = None) -> list:
+    """Every credit note since start_date, whatever its status.
+
+    Unfiltered for the same reason as the orders fetch: the engine decides what
+    counts (CreditStatus.COUNTED), so that policy can change without re-syncing.
+    """
+    params = {}
+    if start_date:
+        params["startDate"] = start_date
+    return fetch_all(Endpoint.CREDIT_NOTES, params)
+
+
 def fetch_customers() -> list:
     return fetch_all(Endpoint.CUSTOMERS)

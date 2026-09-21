@@ -18,7 +18,8 @@ RECENCY_BANDS = ((5, 30), (4, 90), (3, 180), (2, 365))
 # Frequency: distinct orders in the window. (score, min_orders_inclusive).
 FREQUENCY_BANDS = ((5, 24), (4, 12), (3, 6), (2, 2))
 
-# Monetary: gross invoiced (AUD) in the window. (score, min_dollars_inclusive).
+# Monetary: NET spend (AUD) in the window — invoiced less credit notes.
+# (score, min_dollars_inclusive).
 MONETARY_BANDS = ((5, 150_000), (4, 75_000), (3, 25_000), (2, 5_000))
 
 

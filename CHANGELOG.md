@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-09-21 (7)
+
+### Fixed
+- Spend is now the amount actually invoiced minus credit notes, not gross invoiced. Credits run at ~21% of invoiced across the base and affect 223 of 559 customers, so spend, RFM monetary scores, segments and the customer ordering were all overstated (Ori The Jeweller read $69.3K against a real $24.8K).
+
+### Added
+- Credit notes pulled from Unleashed into `data/credits.json` (`CreditNotes`, `utils/datasource.py:credit_rows`); only Completed credits count, and net spend is floored at zero for returns of orders invoiced before the 24-month window (`constants/returns.py`).
+- A returns flag on accounts that send back 30% or more of what they buy, and an "after $X returned" line under the spend tile so the figure reconciles against Unleashed.
+
 ## 2026-09-21 (6)
 
 ### Changed

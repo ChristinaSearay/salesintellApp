@@ -170,8 +170,8 @@ RECOMMENDED_ACTIONS = {
             title="Replace open consignment with a capped, curated structure for mid-July",
             detail=(
                 "The open consignment has failed — last drop ~$30k sent, all but $1k "
-                "returned, and the gross invoiced figure ($91.7k) badly overstates what "
-                "they actually retained. For the mid-July attempt, propose a small "
+                "returned, and their spend is now shown net of credits, which is why "
+                "it reads far below what they were invoiced. For the mid-July attempt, propose a small "
                 "curated parcel (e.g. ≤$10k) on defined sale-or-return terms: capped "
                 "value, fixed 60-day window, deposit and a restock fee on returns — "
                 "instead of an open $20–30k hold."
