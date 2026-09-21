@@ -24,9 +24,14 @@ export default function AttentionPage() {
     api.getAttention().then(setAttention).catch((e) => setErr(String(e)));
   }, []);
 
-  const onNoteSaved = (account, next) => {
+  const onNoteSaved = (account, next, muted) => {
     setAttention(next);
-    setToast(`Noted ${account.name} — back of the line for ${next.snoozeDays} days.`);
+    setToast(
+      muted
+        ? `${account.name} won’t show as “needs attention” again, so you won’t be reminded about this account. ` +
+          `If an order is placed on it, reminders go back to normal.`
+        : `Noted ${account.name} — back of the line for ${next.snoozeDays} days.`
+    );
   };
 
   return (
@@ -62,6 +67,15 @@ export default function AttentionPage() {
             "Loading…"
           )}
         </p>
+        {attention?.muted > 0 && (
+          // The only sign a muted account exists — its own page is where you
+          // turn alerts back on.
+          <p className="mt-2 text-[13px] text-muted-foreground">
+            🔕 {attention.muted} account{attention.muted === 1 ? "" : "s"} muted — open one from{" "}
+            <Link href={SCREEN.CUSTOMERS} className="font-semibold text-primary">All customers</Link>{" "}
+            to alert again.
+          </p>
+        )}
       </header>
 
       {err && (

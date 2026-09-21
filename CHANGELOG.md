@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-21 (4)
+
+### Added
+- "Don't alert me about this account again" when saving a note on the needs-attention queue: the account leaves the queue until an order is placed on it, then alerting reverts to normal (`utils/mute.py`, `AttentionReason.MUTED`, `POST /api/attention/<code>/note` `{mute}`).
+- A muted account's own page shows why it was muted and an "Alert me again" button (`POST /api/attention/<code>/unmute`); the queue screen shows how many accounts are muted.
+
 ## 2026-09-21 (3)
 
 ### Fixed

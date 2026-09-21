@@ -84,7 +84,10 @@ export function matchesAccount(account, query) {
 }
 
 // Why a customer is in the "needs attention" queue (AttentionReason in constants/attention.py).
-export const REASON = { OVERDUE: "overdue", NO_RECENT_NOTE: "no_recent_note", RECENTLY_NOTED: "recently_noted" };
+export const REASON = {
+  OVERDUE: "overdue", NO_RECENT_NOTE: "no_recent_note",
+  RECENTLY_NOTED: "recently_noted", MUTED: "muted",
+};
 
 // The "needs attention" queue: account cards plus why each customer is there.
 function toAttention(payload) {
@@ -99,6 +102,7 @@ function toAttention(payload) {
     })),
     overdue: payload.overdue || 0,
     notedRecently: payload.noted_recently || 0,
+    muted: payload.muted || 0,
     snoozeDays: payload.snooze_days || 0,
   };
 }
@@ -141,6 +145,8 @@ function toPrep(payload) {
     topGroups: c.top_groups || [],
     balance: c.balance || 0,
     learned: c.learned || [],
+    muted: !!c.is_muted,
+    mutedNote: c.muted || "",
     pitches: (payload.actions || []).map(toPitch),
     exhausted: !!payload.exhausted,
   };
@@ -150,7 +156,10 @@ export const api = {
   getAccounts: async () => (await get("/api/customers")).map(toAccount),
   getAttention: async () => toAttention(await get("/api/attention")),
   // Saving a note sends the customer to the back of the queue → refreshed queue.
-  saveNote: async (code, text) => toAttention(await post(`/api/attention/${code}/note`, { text })),
+  // mute = "do not alert again": off the queue until they order (utils/mute.py).
+  saveNote: async (code, text, mute = false) =>
+    toAttention(await post(`/api/attention/${code}/note`, { text, mute })),
+  unmute: async (code) => toPrep(await post(`/api/attention/${code}/unmute`, {})),
   getReasons: () => get("/api/reasons"),
   getPrep: async (code) => toPrep(await get(`/api/customer/${code}`)),
   // rejections: [{ id, reasons: [REASON_NAME], note }]

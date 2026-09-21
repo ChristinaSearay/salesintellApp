@@ -11,7 +11,8 @@ API:
   GET  /api/reasons                      -> rejection-reason chips
   GET  /api/customers                    -> account cards for every active customer (by spend)
   GET  /api/attention                    -> the top customers that need attention now
-  POST /api/attention/<code>/note        -> {text} -> save a rep note, returns the refreshed queue
+  POST /api/attention/<code>/note        -> {text, mute?} -> save a rep note, returns the refreshed queue
+  POST /api/attention/<code>/unmute      -> alert on this account again -> refreshed prep
   GET  /api/customer/<code>              -> customer + current 3 actions
   POST /api/customer/<code>/feedback     -> {accepted:[id], rejections:[{id,reasons,note}]}
   POST /api/customer/<code>/reset        -> clear that customer's learning
@@ -28,7 +29,7 @@ from urllib.parse import urlparse
 from constants.config import DEFAULT_PORT
 from constants.feedback import RejectionReason
 from constants.intel import IntelSource
-from utils.attention import attention_payload
+from utils.attention import attention_payload, mute_customer, unmute_customer
 from utils.intel import IntelUpdate, add_note, add_update, delete_update
 from utils.prospects import check as prospect_check, create as create_prospect
 from utils.recommend import (
@@ -122,6 +123,12 @@ class Handler(BaseHTTPRequestHandler):
             return self._post_intel(parts)
         if len(parts) == 4 and parts[0] == "api" and parts[1] == "attention" and parts[3] == "note":
             return self._post_note(parts)
+        if len(parts) == 4 and parts[0] == "api" and parts[1] == "attention" and parts[3] == "unmute":
+            code = self._code_from(parts)
+            if not code:
+                return self.send_error(404)
+            unmute_customer(code)
+            return self._json(actions_payload(code))
         if len(parts) == 3 and parts[0] == "api" and parts[1] == "prospects":
             return self._post_prospect(parts[2])
         if len(parts) == 4 and parts[0] == "api" and parts[1] == "customer":
@@ -189,13 +196,18 @@ class Handler(BaseHTTPRequestHandler):
         if not code:
             return self.send_error(404)
         try:
-            text = (self._read_body().get("text") or "").strip()
+            body = self._read_body()
         except json.JSONDecodeError:
             return self._json({"error": "bad json"}, status=400)
+        text = (body.get("text") or "").strip()
         if not text:
             return self._json({"error": "no text"}, status=400)
         try:
             add_note(code, text)
+            # "Save note — do not alert again": off the queue until an order
+            # lands on the account, not just to the back of the line.
+            if body.get("mute"):
+                mute_customer(code, text)
             return self._json(attention_payload())
         except Exception as exc:  # never 500 silently in a demo
             return self._json({"error": str(exc)}, status=500)

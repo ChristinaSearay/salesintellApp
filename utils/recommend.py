@@ -17,6 +17,7 @@ from constants.intel import (
 from constants.recommended_actions import CUSTOMER_KIND
 from constants.rfm import RelationshipFlag
 from utils.candidates import Candidate, build_candidate_pool, opportunity_candidates
+from utils import mute
 from utils.intel import effective_context, latest_update, live_hook_set, load_updates
 from utils.preferences import (
     apply_acceptance,
@@ -173,6 +174,7 @@ def customer_summary(code: str) -> dict:
     relationship = notes.relationship if notes else p.relationship
     live = live_hook_set(code)
     latest = latest_update(code)
+    muted = mute.active(code, p.order_dates[-1] if p.order_dates else None)
     hooks = list(notes.hooks) if notes else []
     return {
         "code": code,
@@ -202,6 +204,10 @@ def customer_summary(code: str) -> dict:
         "spend": p.monetary,
         "top_groups": [g.name for g in p.bought_groups[:4]],
         "learned": learned_chips(profile),
+        # "do not alert again" (utils/mute.py). This page is where a rep turns
+        # it back on by hand — a muted account never appears in the queue.
+        "muted": muted.note if muted else None,
+        "is_muted": muted is not None,
     }
 
 

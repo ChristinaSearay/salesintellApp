@@ -69,6 +69,17 @@ export default function VisitPage({ params }) {
     }
   }
 
+  // The rep muted this account ("do not alert again"). An order lifts it by
+  // itself; this is the manual way back.
+  async function alertAgain() {
+    setBusy(true);
+    try {
+      setPrep(await api.unmute(code));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function reset() {
     const p = await api.reset(code);
     setPrep(p);
@@ -144,6 +155,26 @@ export default function VisitPage({ params }) {
           </div>
         </div>
       </header>
+
+      {prep.muted && (
+        <section className="mt-5 rounded-2xl border border-border bg-secondary/60 p-3.5">
+          <p className="text-[13.5px] font-semibold leading-snug text-foreground">
+            <span aria-hidden>🔕</span> Muted — you won’t be reminded about this account
+          </p>
+          <p className="mt-1 text-[12.5px] leading-snug text-muted-foreground">
+            {prep.mutedNote ? `“${prep.mutedNote}” · ` : ""}
+            Reminders come back on their own if an order is placed on this account.
+          </p>
+          <button
+            type="button"
+            onClick={alertAgain}
+            disabled={busy}
+            className="mt-2.5 h-10 w-full rounded-xl bg-card text-[13.5px] font-semibold text-foreground ring-1 ring-primary/25 transition active:scale-[0.99] disabled:opacity-50"
+          >
+            🔔 Alert me again
+          </button>
+        </section>
+      )}
 
       {/* stats */}
       <section className="mt-6 grid grid-cols-3 gap-2.5" aria-label="Key stats">

@@ -23,16 +23,22 @@ MIN_OVERDUE_DAYS = 14
 # customer at the back of the line for this long.
 NOTE_SNOOZE_DAYS = 30
 
+# A muted account's watermark when they had never ordered: any first order
+# lifts the mute (utils/mute.py).
+NO_ORDER_MARK = ""
+
 
 class AttentionReason(Enum):
     """Why a customer sits where they do in the queue — also the sort tier."""
     OVERDUE = "overdue"
     NO_RECENT_NOTE = "no_recent_note"
     RECENTLY_NOTED = "recently_noted"
+    MUTED = "muted"          # "do not alert again" — out of the queue entirely
 
 
 TIER_ORDER = {
     AttentionReason.OVERDUE: 0,
     AttentionReason.NO_RECENT_NOTE: 1,
     AttentionReason.RECENTLY_NOTED: 2,
+    AttentionReason.MUTED: 3,
 }

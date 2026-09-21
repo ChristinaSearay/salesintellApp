@@ -43,6 +43,10 @@ REPORTS_DIR = os.path.join(BASE_DIR, "reports")
 FEEDBACK_DIR = os.environ.get("SEARAY_FEEDBACK_DIR") or os.path.join(BASE_DIR, "feedback")
 # Per-customer live intel (summarised WhatsApp updates) layered over meeting notes.
 NOTES_DIR = os.environ.get("SEARAY_NOTES_DIR") or os.path.join(BASE_DIR, "notes")
+# Accounts a rep asked us to stop reminding them about ("do not alert again").
+# A sub-directory of the notes dir so the deployed persistent disk covers it
+# without another env var; the ".json" scan in utils/intel.py skips directories.
+MUTES_DIR = os.path.join(NOTES_DIR, "mutes")
 # Businesses the reps created in Unleashed from a visit. Kept locally too, so
 # they show up in the app straight away instead of only after the next sync
 # (and so we don't offer to create the same shop twice the same day).
