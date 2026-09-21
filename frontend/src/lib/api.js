@@ -39,7 +39,14 @@ async function get(url) {
   return r.json();
 }
 async function post(url, body) {
-  const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
+  let r;
+  try {
+    r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
+  } catch {
+    // The browser's own wording for this is "Load failed", which tells a rep
+    // nothing. It's the engine being unreachable — usually a restart.
+    throw new Error("Couldn’t reach the engine — it may be restarting. Try again in a moment.");
+  }
   if (!r.ok) {
     let msg = `${url} → ${r.status}`;
     try { const j = await r.json(); if (j?.error) msg = j.error; } catch {}

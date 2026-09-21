@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-21 (3)
+
+### Fixed
+- An update opened from a customer's page ("Add WhatsApp update") now files against that customer by default. Notes name people, not shops — "Michelle is waiting on a quote" matched nothing, so the rep had to find the customer in a 562-name list, and the new-customer box offered to create *Michelle* in Unleashed.
+- A failed request shows "Couldn't reach the engine — it may be restarting" instead of the browser's bare "Load failed".
+
 ## 2026-09-21 (2)
 
 ### Added

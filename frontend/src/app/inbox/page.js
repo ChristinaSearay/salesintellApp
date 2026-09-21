@@ -19,8 +19,12 @@ const RELATIONSHIP_LABEL = {
   OCCASIONAL: { icon: "🛒", label: "Buys now & then", cls: "bg-muted text-muted-foreground" },
 };
 
-function Proposal({ p, accounts, onSave, onDiscard, saving, onCreated }) {
-  const [code, setCode] = useState(p.customer_code || "");
+function Proposal({ p, accounts, onSave, onDiscard, saving, onCreated, focusCode }) {
+  // Opened from a customer's page ("Add WhatsApp update"), so an update the
+  // model couldn't place is about THEM. Notes name people, not shop names —
+  // "Michelle is waiting on a quote" is Evans Jewellery to the rep who wrote
+  // it, and there are four Michelles in the customer master.
+  const [code, setCode] = useState(p.customer_code || focusCode || "");
   const rel = RELATIONSHIP_LABEL[p.relationship];
   // Once the rep creates (or links) the business, this stops being unmatched.
   const unmatched = !code;
@@ -56,6 +60,12 @@ function Proposal({ p, accounts, onSave, onDiscard, saving, onCreated }) {
           <option key={a.code} value={a.code}>{a.name}</option>
         ))}
       </select>
+      {!p.customer_code && code && focusCode === code && (
+        <p className="mt-1.5 text-[12px] text-muted-foreground">
+          Written as “{p.customer_as_written}” — filed under the customer you opened this from. Change it above
+          if that’s wrong.
+        </p>
+      )}
       {unmatched && (
         <>
           <p className="mt-1.5 text-[12px] text-muted-foreground">
@@ -229,6 +239,7 @@ function InboxInner() {
                 p={p}
                 accounts={accounts}
                 saving={savingId === p.id}
+                focusCode={focusCode}
                 onSave={save}
                 onCreated={onProspectCreated}
                 onDiscard={() => setProposals((ps) => ps.filter((x) => x.id !== p.id))}
