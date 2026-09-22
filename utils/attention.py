@@ -8,9 +8,10 @@ Tiers, in order (constants/attention.py):
 Biggest 2-year spend first within tiers 1 and 2. Saving a note (or confirming a
 WhatsApp update) moves a customer to tier 3, so the next one pops up.
 
-A customer's rhythm is the AVERAGE gap between their distinct order dates, not
-the median: accounts often place a burst of orders in one week, which would
-drag a median down to a few days and flag them as late almost immediately.
+A customer's rhythm (`utils/rhythm.py`) is the AVERAGE gap between their
+distinct order dates, not the median: accounts often place a burst of orders in
+one week, which would drag a median down to a few days and flag them as late
+almost immediately.
 """
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
@@ -18,10 +19,7 @@ from typing import Dict, List, Optional
 
 from constants.attention import (
     ATTENTION_QUEUE_SIZE,
-    MIN_OVERDUE_DAYS,
-    MIN_RHYTHM_ORDER_DATES,
     NOTE_SNOOZE_DAYS,
-    OVERDUE_RATIO,
     TIER_ORDER,
     AttentionReason,
 )
@@ -29,6 +27,7 @@ from utils import mute as mutes
 from utils.intel import IntelUpdate, latest_updates
 from utils.recommend import account_card, all_profiles
 from utils.repeat import unit_phrase
+from utils.rhythm import is_overdue, rhythm_days
 
 
 @dataclass(frozen=True)
@@ -46,19 +45,6 @@ class Attention:
         if self.reason is AttentionReason.RECENTLY_NOTED:
             return (TIER_ORDER[self.reason], self.note.ts)
         return (TIER_ORDER[self.reason], -self.spend, self.name)
-
-
-def rhythm_days(order_dates) -> Optional[int]:
-    """Average days between distinct order dates; None with too few orders."""
-    if len(order_dates) < MIN_RHYTHM_ORDER_DATES:
-        return None
-    return max(1, round((order_dates[-1] - order_dates[0]).days / (len(order_dates) - 1)))
-
-
-def is_overdue(rhythm: Optional[int], days_since: Optional[int]) -> bool:
-    if rhythm is None or days_since is None:
-        return False
-    return days_since >= rhythm * OVERDUE_RATIO and days_since - rhythm >= MIN_OVERDUE_DAYS
 
 
 def _days_since(iso_ts: str, now: datetime) -> Optional[int]:

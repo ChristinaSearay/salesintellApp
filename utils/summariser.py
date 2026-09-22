@@ -41,7 +41,11 @@ Rules:
   (e.g. "gold swap + max $20/g labour"). Empty string if none.
 - relationship: CHURN_RISK if they are threatening to leave / say we're too expensive /
   pulled supply; STALLED, DECLINING, DORMANT_PROSPECT, OCCASIONAL per their definitions;
-  UNCHANGED if the message gives no signal.
+  UNCHANGED if the message gives no signal. A flag is a claim about the CUSTOMER
+  disengaging, so only set one when the customer is the one pulling back. A live deal —
+  waiting on a quote, chasing samples, asking for photos or pricing — is an engaged
+  customer, even when the thread is full of delay: if we are the ones who are slow, that
+  is our delay, not them going quiet, and it is UNCHANGED.
 - next_contact: a timing cue if one is stated ("when the new samples land"). Else empty.
 - advice: one sentence on what the rep should do next with this customer, given the message."""
 

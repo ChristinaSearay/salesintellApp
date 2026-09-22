@@ -39,6 +39,7 @@ from utils.products import (
     rank_items,
 )
 from utils.parsing import days_between, normalise_phone, parse_date, parse_money, parse_number
+from utils.relationship import effective_flag
 from utils.rfm import rfm_segment, score_frequency, score_monetary, score_recency
 
 
@@ -269,8 +270,13 @@ def build_profiles(codes: Optional[Iterable[str]] = None) -> List[CustomerProfil
         c_rows = credits.get(code, [])
 
         # --- Recency / Frequency from orders ---
-        order_dates = [d for d in (parse_date(r.get(SalesCol.ORDER_DATE)) for r in s_rows) if d]
-        last_order = max(order_dates) if order_dates else None
+        # Distinct and sorted up front: s_rows is one row per sales LINE, so the
+        # raw dates repeat. Anything reading a rhythm off this needs the gaps
+        # between orders, not between line items.
+        order_dates = tuple(sorted({
+            d for d in (parse_date(r.get(SalesCol.ORDER_DATE)) for r in s_rows) if d
+        }))
+        last_order = order_dates[-1] if order_dates else None
         recency = days_between(last_order, anchor_date())
         distinct_orders = {(r.get(SalesCol.ORDER_NO) or "").strip() for r in s_rows}
         frequency = len(distinct_orders)
@@ -295,7 +301,12 @@ def build_profiles(codes: Optional[Iterable[str]] = None) -> List[CustomerProfil
         segment = (Segment.NEW_PROSPECT if not order_dates and not i_rows
                    else rfm_segment(r, f))
         notes = effective_context(code)  # meeting notes + live WhatsApp intel
-        relationship = notes.relationship if notes else RelationshipFlag.NONE
+        # A note can claim they went quiet; the orders decide whether that is
+        # still true (utils/relationship.py).
+        relationship = effective_flag(
+            notes.relationship if notes else RelationshipFlag.NONE,
+            order_dates, recency,
+        )
 
         # --- Product analysis ---
         bought = _bought_groups(s_rows)
@@ -341,7 +352,7 @@ def build_profiles(codes: Optional[Iterable[str]] = None) -> List[CustomerProfil
             bought_product_codes=frozenset(
                 c for c in ((r.get(SalesCol.PRODUCT_CODE) or "").strip() for r in s_rows) if c),
             purchases=_purchases(s_rows),
-            order_dates=tuple(sorted(set(order_dates))),
+            order_dates=order_dates,
         ))
     if codes is None:
         profiles.sort(key=lambda p: (-p.monetary, p.customer.name))

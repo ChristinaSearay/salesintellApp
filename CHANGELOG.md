@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-22
+
+### Fixed
+- A customer no longer reads "Gone quiet on us" while they are still ordering inside their usual gap between orders. Gama Jewellery showed the badge against a $58k order placed 14 days earlier, because a WhatsApp thread about a quote we owed them was read as the relationship cooling. "May be leaving us" is unaffected — an account can order weekly and still be leaving.
+- Order dates used for a customer's rhythm are now distinct and sorted before use; they were taken one per sales line, so a rhythm read from them collapsed to about a day.
+
 ## 2026-09-21 (7)
 
 ### Fixed

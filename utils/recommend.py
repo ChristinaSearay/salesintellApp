@@ -20,6 +20,7 @@ from constants.rfm import RelationshipFlag
 from utils.candidates import Candidate, build_candidate_pool, opportunity_candidates
 from utils import mute, playbook
 from utils.intel import effective_context, latest_update, live_hook_set, load_updates
+from utils.relationship import flag_for
 from utils.preferences import (
     apply_acceptance,
     apply_rejection,
@@ -204,7 +205,7 @@ def customer_summary(code: str) -> dict:
     p = eng["profiles"][code]
     profile = load_profile(code)
     notes = effective_context(code)  # fresh: includes WhatsApp updates saved since start-up
-    relationship = notes.relationship if notes else p.relationship
+    relationship = flag_for(p, notes)
     live = live_hook_set(code)
     latest = latest_update(code)
     muted = mute.active(code, p.order_dates[-1] if p.order_dates else None)
@@ -264,7 +265,7 @@ def account_card(code: str) -> dict:
     """Lean list-row view of a customer (the full summary is per-visit)."""
     p = _engine()["profiles"][code]
     notes = effective_context(code)
-    relationship = notes.relationship if notes else p.relationship
+    relationship = flag_for(p, notes)
     return {
         "code": code,
         "name": p.customer.name,
