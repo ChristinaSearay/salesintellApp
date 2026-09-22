@@ -7,9 +7,10 @@ most recent invoice's customer name > the code itself.
 from functools import lru_cache
 from typing import Dict
 
-from constants.columns import CustomerCol, InvoiceCol, SalesCol, SalesStatus
+from constants.columns import CustomerCol, InvoiceCol, SalesCol
 from constants.customers import TARGET_BY_CODE, Customer
 from utils.datasource import customer_rows, invoice_rows, sales_rows
+from utils.orders import counts_as_order
 from utils.parsing import parse_date
 from utils.prospect_store import load_all as load_prospects
 
@@ -26,7 +27,7 @@ def load_customers() -> Dict[str, Customer]:
     codes = set(TARGET_BY_CODE)
     for row in sales_rows():
         code = _clean(row.get(SalesCol.CUSTOMER_CODE))
-        if code and row.get(SalesCol.STATUS) in SalesStatus.COUNTED:
+        if code and counts_as_order(row):
             codes.add(code)
 
     invoice_names: Dict[str, tuple] = {}  # code -> (date, name) of latest invoice

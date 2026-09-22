@@ -95,5 +95,16 @@ class SalesStatus:
     # needs-attention queue. Backorders and placed orders are real commitments,
     # so excluding them made big customers look lapsed the week they ordered
     # (Evans Jewellery, $58k backordered 08/09/2026). Parked is a draft, so it
-    # stays out. An allow-list, so any unexpected status is excluded by default.
+    # stays out — UNLESS it has been invoiced (utils/orders.py): the team
+    # invoices straight off parked orders, and Stonex Otahuhu's $41k order
+    # (SO-00094003, invoiced 28/08/2026) read "0 orders". An allow-list, so any
+    # unexpected status is excluded by default.
     COUNTED = frozenset({COMPLETED, BACKORDERED, PLACED})
+    COUNTED_ONCE_INVOICED = frozenset({PARKED})
+
+
+class DocPrefix:
+    """Unleashed numbers an invoice after its order: SO-00094003 is invoiced as
+    SI-00094003. Web orders keep their own number on the invoice (web#3181)."""
+    SALES_ORDER = "SO-"
+    INVOICE = "SI-"

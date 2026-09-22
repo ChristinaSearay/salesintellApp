@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-09-23
+
+### Fixed
+- A Parked order that has been invoiced now counts as an order. The team invoices straight off parked orders, so 32 of them ($277K across 28 customers) were ignored: Stonex Jewellers Otahuhu showed $41.2K spend next to "0 orders", no last order, "Gone cold", and a pitch to "open" a category it had just bought.
+
 ## 2026-09-22
 
 ### Fixed

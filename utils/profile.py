@@ -16,7 +16,6 @@ from constants.columns import (
     CustomerCol,
     InvoiceCol,
     SalesCol,
-    SalesStatus,
 )
 from constants.config import anchor_date
 from constants.customers import Customer
@@ -31,6 +30,7 @@ from constants.returns import (
 from constants.rfm import RelationshipFlag, Segment
 from utils.customers import load_customers
 from utils.datasource import credit_rows, customer_rows, invoice_rows, sales_rows
+from utils.orders import counts_as_order
 from utils.products import (
     CatalogueItem,
     load_catalogue,
@@ -130,7 +130,7 @@ def _bucket_sales(codes: frozenset):
     """One pass over the sales file -> {code: [rows]} for the wanted customers."""
     buckets: Dict[str, list] = defaultdict(list)
     for row in sales_rows():
-        if row.get(SalesCol.STATUS) not in SalesStatus.COUNTED:
+        if not counts_as_order(row):
             continue  # skips parked drafts and the stray 'Totals' footer too
         code = (row.get(SalesCol.CUSTOMER_CODE) or "").strip()
         if code in codes:
