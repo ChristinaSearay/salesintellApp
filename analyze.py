@@ -6,6 +6,7 @@ Run:  uv run python analyze.py
 from constants.config import anchor_date
 from constants.customers import TARGET_BY_CODE
 from utils.profile import build_profiles
+from utils.text import count_noun
 
 
 def money(v: float) -> str:
@@ -38,7 +39,7 @@ def main() -> None:
     print("=" * 96)
     for p in profiles:
         print(f"\n### {p.customer.code} — {p.customer.name}  [{p.segment.value}]")
-        print(f"    last order {p.last_order_date}  | {p.frequency} orders "
+        print(f"    last order {p.last_order_date}  | {count_noun(p.frequency, 'order')} "
               f"({p.product_order_count} with real products) | "
               f"{p.new_since_count} products created since last order")
 

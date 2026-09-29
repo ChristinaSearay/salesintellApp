@@ -21,6 +21,7 @@ from utils.candidates import Candidate, build_candidate_pool, opportunity_candid
 from utils import mute, playbook
 from utils.intel import effective_context, latest_update, live_hook_set, load_updates
 from utils.relationship import flag_for
+from utils.text import count_noun
 from utils.preferences import (
     apply_acceptance,
     apply_rejection,
@@ -230,7 +231,7 @@ def customer_summary(code: str) -> dict:
         "intel_updated": latest.ts if latest else "",
         "intel_count": len(load_updates(code)),
         "next_contact": (notes.next_contact if notes else "") or "",
-        "snapshot": (f"{p.frequency} orders · ${p.monetary:,.0f} in 24 months · "
+        "snapshot": (f"{count_noun(p.frequency, 'order')} · ${p.monetary:,.0f} in 24 months · "
                      + (f"last order {p.recency_days} days ago" if p.recency_days is not None
                         else "no orders on record")),
         "last_order_days": p.recency_days,

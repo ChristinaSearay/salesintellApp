@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-09-29
+
+### Fixed
+- Order counts read "1 order", not "1 orders", in the customer snapshot, the pitch text and the reports.
+
 ## 2026-09-23
 
 ### Fixed

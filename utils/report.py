@@ -8,6 +8,7 @@ from typing import Callable, Optional, Tuple
 from constants.config import anchor_date
 from constants.recommended_actions import Action, CUSTOMER_KIND
 from utils.profile import CustomerProfile
+from utils.text import count_noun
 
 Resolver = Callable[[str], Tuple[str, Optional[float], Optional[str]]]
 
@@ -94,7 +95,7 @@ def render(profile: CustomerProfile, actions, resolve: Resolver) -> str:
 
     # --- Snapshot + kind ---
     snapshot = (
-        f"{p.frequency} orders and {_money(p.monetary)} net of returns over 24 months; "
+        f"{count_noun(p.frequency, 'order')} and {_money(p.monetary)} net of returns over 24 months; "
         f"last ordered {p.recency_days} days ago ({_date(p.last_order_date)}). "
         f"Scores **{seg}** on the numbers — {flag.split('—')[0].strip().lower() if flag else 'no qualitative flag'}."
     )

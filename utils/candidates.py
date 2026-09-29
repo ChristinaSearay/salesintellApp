@@ -43,6 +43,7 @@ from utils.products import (
     rank_items,
 )
 from utils.repeat import Cadence, due, group_cadences, item_cadences
+from utils.text import count_noun
 
 Resolver = Callable[[str], Tuple[str, Optional[float], Optional[str]]]
 
@@ -189,7 +190,7 @@ def _reorder_candidate(code: str, cad: Cadence, item: CatalogueItem, lapsed: boo
     last = f"{cad.last_bought:%d %b %Y}"
     if lapsed:
         title = f"They've stopped reordering: {cad.group}"
-        detail = (f"{cad.description} was a standing line — {cad.times_bought} orders, "
+        detail = (f"{cad.description} was a standing line — {count_noun(cad.times_bought, 'order')}, "
                   f"{cad.interval_phrase}. Nothing since {last} ({days} days). Ask what "
                   f"changed before pitching anything new; it's in stock if they want it back.")
     elif cad.times_bought == MIN_ITEM_PURCHASE_DATES:
@@ -200,7 +201,7 @@ def _reorder_candidate(code: str, cad: Cadence, item: CatalogueItem, lapsed: boo
                   f"is about due. It's in stock now.")
     else:
         title = f"Due to reorder: {cad.group}"
-        detail = (f"They buy {cad.description} {cad.interval_phrase} — {cad.times_bought} orders, "
+        detail = (f"They buy {cad.description} {cad.interval_phrase} — {count_noun(cad.times_bought, 'order')}, "
                   f"last {cad.last_quantity:,.0f} on {last} ({days} days ago). They're due, "
                   f"and it's in stock now.")
     return Candidate(
@@ -232,7 +233,7 @@ def _restock_candidate(code: str, cad: Cadence, item: CatalogueItem) -> Candidat
         base_score=KIND_BASE_SCORE[ActionKind.REORDER] - GROUP_RESTOCK_PENALTY,
         pitches=(Pitch(item.code, "in stock, in the range they're due to restock"),),
         groups=(cad.group,),
-        grounded_in=(f"Repeat-buying engine: {cad.times_bought} orders in this group, "
+        grounded_in=(f"Repeat-buying engine: {count_noun(cad.times_bought, 'order')} in this group, "
                      f"{cad.interval_phrase}."),
         price_point=item.sell_price,
     )
@@ -244,7 +245,7 @@ def _range_extension_candidate(code: str, anchor: Cadence, item: CatalogueItem) 
         id=f"{code}-range-{item.code}",
         title=f"Extend their range: more {item.group}",
         detail=(f"{anchor.description} is one of their best sellers (${anchor.value:,.0f} "
-                f"over {anchor.times_bought} orders). This is the same range at a similar "
+                f"over {count_noun(anchor.times_bought, 'order')}). This is the same range at a similar "
                 f"price, in stock, and they have never ordered it."),
         kind=ActionKind.UPSELL,
         incentive_type=IncentiveType.NONE,
