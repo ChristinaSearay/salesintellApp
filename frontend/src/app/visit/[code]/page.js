@@ -237,7 +237,9 @@ export default function VisitPage({ params }) {
         <div className="flex items-baseline justify-between gap-2">
           <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">What&apos;s going on</h2>
           <Link href={`/inbox?code=${code}`} className="text-[12px] font-semibold text-primary">
-            💬 {prep.intelCount > 0 ? `${prep.intelCount} update${prep.intelCount === 1 ? "" : "s"}` : "Add WhatsApp update"}
+            {prep.intelCount > 0
+              ? `✏️ Edit ${prep.intelCount} update${prep.intelCount === 1 ? "" : "s"}`
+              : "💬 Add WhatsApp update"}
           </Link>
         </div>
         {prep.intelUpdated && (

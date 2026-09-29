@@ -3,6 +3,7 @@
 ## 2026-09-29
 
 ### Added
+- Summarised updates can be edited (bullets and next move) before saving in the WhatsApp inbox, and afterwards from a customer's saved updates, to fix spelling or a wrong detail.
 - "What's going on?" button on a customer's page: type a note straight onto that customer (no customer matching), and it is summarised into their "What's going on" with a fresh suggested next move and re-ranked pitches.
 
 ### Fixed

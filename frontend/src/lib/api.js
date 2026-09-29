@@ -191,6 +191,9 @@ export const api = {
   getIntel: async (code) => (await get(`/api/intel/${code}`)).updates,
   saveIntel: async (code, proposal) => toPrep(await post(`/api/intel/${code}`, proposal)),
   deleteIntel: async (code, id) => toPrep(await post(`/api/intel/${code}/delete`, { id })),
+  // Fix the wording of a saved update (typo, wrong name) — bullets + next move.
+  editIntel: async (code, id, hooks, advice) =>
+    toPrep(await post(`/api/intel/${code}/edit`, { id, hooks, advice })),
   // A note typed on the customer's own page: summarised for them (no matching)
   // and saved at once → refreshed prep with the new next move and pitches.
   addCustomerNote: async (code, text) => toPrep(await post(`/api/intel/${code}/note`, { text })),

@@ -116,6 +116,24 @@ def delete_update(code: str, update_id: str) -> bool:
     return True
 
 
+def edit_update(code: str, update_id: str, hooks: List[str], advice: str) -> IntelUpdate:
+    """The rep corrected a saved update (a typo, a wrong name). Only the words
+    they can see change — the bullets and the next move; the groups, flag and
+    incentive the summariser read stay as they were. Raises ValueError when
+    the update is gone or every bullet was cleared (that's a remove)."""
+    hooks = [h.strip() for h in hooks if h and h.strip()]
+    if not hooks:
+        raise ValueError("An update needs at least one line — remove it instead.")
+    updates = load_updates(code)
+    for u in updates:
+        if u.id == update_id:
+            u.hooks = hooks
+            u.advice = (advice or "").strip()
+            _save(code, updates)
+            return u
+    raise ValueError("That update no longer exists.")
+
+
 def clear_updates(code: str) -> None:
     try:
         os.remove(_path(code))

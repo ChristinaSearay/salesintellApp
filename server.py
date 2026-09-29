@@ -21,6 +21,7 @@ API:
   GET  /api/intel/<code>                 -> saved live updates for a customer
   POST /api/intel/<code>                 -> save one update (body = a proposal) -> refreshed prep
   POST /api/intel/<code>/delete          -> {id} -> refreshed prep
+  POST /api/intel/<code>/edit            -> {id, hooks, advice} -> fix a saved update's wording -> refreshed prep
   POST /api/intel/<code>/note            -> {text} -> summarise a note for this customer, save -> refreshed prep
 """
 import json
@@ -32,7 +33,7 @@ from constants.config import DEFAULT_PORT
 from constants.feedback import RejectionReason
 from constants.intel import IntelSource
 from utils.attention import attention_payload, mute_customer, unmute_customer
-from utils.intel import IntelUpdate, add_note, add_update, delete_update
+from utils.intel import IntelUpdate, add_note, add_update, delete_update, edit_update
 from utils.prospects import check as prospect_check, create as create_prospect
 from utils.recommend import (
     actions_payload,
@@ -246,10 +247,13 @@ class Handler(BaseHTTPRequestHandler):
             if len(parts) == 4 and parts[3] == "delete":
                 delete_update(code, body.get("id", ""))
                 return self._json(actions_payload(code))
+            if len(parts) == 4 and parts[3] == "edit":
+                edit_update(code, body.get("id", ""), body.get("hooks") or [], body.get("advice", ""))
+                return self._json(actions_payload(code))
             if len(parts) == 4 and parts[3] == "note":
                 # Typed on the customer's own page: no matching, saved at once.
                 return self._json(record_note(code, body.get("text", "")))
-        except ValueError as exc:    # rep-fixable: empty note
+        except ValueError as exc:    # rep-fixable: empty note / edit
             return self._json({"error": str(exc)}, status=400)
         except RuntimeError as exc:  # summariser not configured / API failure
             return self._json({"error": str(exc)}, status=503)

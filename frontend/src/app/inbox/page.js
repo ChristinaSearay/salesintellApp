@@ -10,6 +10,7 @@ import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { api, whenPhrase } from "@/lib/api";
 import NewCustomer from "@/components/NewCustomer";
+import UpdateEditor from "@/components/UpdateEditor";
 
 const RELATIONSHIP_LABEL = {
   CHURN_RISK: { icon: "👋", label: "May be leaving us", cls: "bg-danger-soft text-danger" },
@@ -25,7 +26,11 @@ function Proposal({ p, accounts, onSave, onDiscard, saving, onCreated, focusCode
   // "Michelle is waiting on a quote" is Evans Jewellery to the rep who wrote
   // it, and there are four Michelles in the customer master.
   const [code, setCode] = useState(p.customer_code || focusCode || "");
+  // The rep can fix the summary's wording (a misspelt name) before saving.
+  const [text, setText] = useState({ hooks: p.hooks, advice: p.advice || "" });
+  const [editing, setEditing] = useState(false);
   const rel = RELATIONSHIP_LABEL[p.relationship];
+  const hasLines = text.hooks.some((h) => h.trim());
   // Once the rep creates (or links) the business, this stops being unmatched.
   const unmatched = !code;
   return (
@@ -82,14 +87,27 @@ function Proposal({ p, accounts, onSave, onDiscard, saving, onCreated, focusCode
         </>
       )}
 
-      <ul className="mt-3 flex flex-col gap-2">
-        {p.hooks.map((h, i) => (
-          <li key={i} className="flex items-start gap-2.5 text-[14.5px] leading-snug text-foreground">
-            <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-info-soft text-[12px]" aria-hidden>💬</span>
-            <span>{h}</span>
-          </li>
-        ))}
-      </ul>
+      <div className="mt-3 flex justify-end">
+        <button
+          type="button"
+          onClick={() => setEditing((e) => !e)}
+          className="text-[12.5px] font-semibold text-primary"
+        >
+          {editing ? "Done editing" : "✏️ Edit wording"}
+        </button>
+      </div>
+      {editing ? (
+        <UpdateEditor hooks={text.hooks} advice={text.advice} onChange={setText} />
+      ) : (
+        <ul className="mt-1 flex flex-col gap-2">
+          {text.hooks.filter((h) => h.trim()).map((h, i) => (
+            <li key={i} className="flex items-start gap-2.5 text-[14.5px] leading-snug text-foreground">
+              <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-info-soft text-[12px]" aria-hidden>💬</span>
+              <span>{h}</span>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {(p.opportunity_groups?.length > 0 || p.prior_incentive) && (
         <div className="mt-3 flex flex-wrap gap-1.5">
@@ -101,17 +119,17 @@ function Proposal({ p, accounts, onSave, onDiscard, saving, onCreated, focusCode
           )}
         </div>
       )}
-      {p.advice && (
+      {!editing && text.advice.trim() && (
         <p className="mt-3 rounded-2xl bg-secondary/70 px-3.5 py-2.5 text-[13px] leading-snug text-secondary-foreground">
-          <span className="font-semibold">Next move: </span>{p.advice}
+          <span className="font-semibold">Next move: </span>{text.advice}
         </p>
       )}
 
       <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
         <button
           type="button"
-          disabled={!code || saving}
-          onClick={() => onSave({ ...p, customer_code: code })}
+          disabled={!code || !hasLines || saving}
+          onClick={() => onSave({ ...p, customer_code: code, hooks: text.hooks, advice: text.advice })}
           className="h-11 rounded-xl bg-primary text-[14px] font-semibold text-primary-foreground transition active:scale-[0.99] disabled:opacity-50"
         >
           {saving ? "Saving…" : "✅ Add to what’s going on"}
@@ -121,6 +139,87 @@ function Proposal({ p, accounts, onSave, onDiscard, saving, onCreated, focusCode
         </button>
       </div>
     </motion.article>
+  );
+}
+
+// A saved update in the customer's history — removable, and its wording
+// fixable (a note typed on the customer's page is saved without a confirm
+// step, so this is where a typo gets corrected).
+function SavedUpdate({ u, onRemove, onEdited }) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState({ hooks: u.hooks, advice: u.advice || "" });
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState(null);
+
+  async function save() {
+    setSaving(true);
+    setErr(null);
+    try {
+      await api.editIntel(u.customer_code, u.id, text.hooks, text.advice);
+      onEdited({ ...u, hooks: text.hooks.map((h) => h.trim()).filter(Boolean), advice: text.advice.trim() });
+      setEditing(false);
+    } catch (e) {
+      setErr(String(e.message || e));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function cancel() {
+    setText({ hooks: u.hooks, advice: u.advice || "" });
+    setEditing(false);
+    setErr(null);
+  }
+
+  return (
+    <li className="rounded-2xl border border-border bg-card p-3.5">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-[11px] font-medium text-muted-foreground">
+          {u.source === "manual" ? "📝 Note" : "💬 WhatsApp"} · {whenPhrase(u.ts)}
+        </span>
+        {!editing && (
+          <span className="flex gap-3">
+            <button onClick={() => setEditing(true)} className="text-[12px] font-semibold text-primary">Edit</button>
+            <button onClick={() => onRemove(u)} className="text-[12px] font-semibold text-muted-foreground active:text-danger">Remove</button>
+          </span>
+        )}
+      </div>
+      {editing ? (
+        <>
+          <UpdateEditor hooks={text.hooks} advice={text.advice} onChange={setText} />
+          {err && <p className="mt-1.5 text-[13px] font-medium text-danger">{err}</p>}
+          <div className="mt-2.5 flex gap-2">
+            <button
+              type="button"
+              onClick={save}
+              disabled={saving || !text.hooks.some((h) => h.trim())}
+              className="h-10 flex-1 rounded-xl bg-primary text-[13.5px] font-semibold text-primary-foreground transition active:scale-[0.99] disabled:opacity-50"
+            >
+              {saving ? "Saving…" : "Save changes"}
+            </button>
+            <button
+              type="button"
+              onClick={cancel}
+              disabled={saving}
+              className="h-10 rounded-xl px-4 text-[13.5px] font-semibold text-muted-foreground ring-1 ring-border"
+            >
+              Cancel
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <ul className="mt-2 flex flex-col gap-1 text-[14px] leading-snug text-foreground">
+            {u.hooks.map((h, i) => <li key={i}>• {h}</li>)}
+          </ul>
+          {u.advice && (
+            <p className="mt-2 text-[12.5px] leading-snug text-muted-foreground">
+              <span className="font-semibold">Next move: </span>{u.advice}
+            </p>
+          )}
+        </>
+      )}
+    </li>
   );
 }
 
@@ -273,17 +372,12 @@ function InboxInner() {
           ) : (
             <ul className="mt-3 flex flex-col gap-2.5">
               {[...history].reverse().map((u) => (
-                <li key={u.id} className="rounded-2xl border border-border bg-card p-3.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-medium text-muted-foreground">
-                      {u.source === "manual" ? "📝 Note" : "💬 WhatsApp"} · {whenPhrase(u.ts)}
-                    </span>
-                    <button onClick={() => remove(u)} className="text-[12px] font-semibold text-muted-foreground active:text-danger">Remove</button>
-                  </div>
-                  <ul className="mt-2 flex flex-col gap-1 text-[14px] leading-snug text-foreground">
-                    {u.hooks.map((h, i) => <li key={i}>• {h}</li>)}
-                  </ul>
-                </li>
+                <SavedUpdate
+                  key={u.id}
+                  u={u}
+                  onRemove={remove}
+                  onEdited={(nu) => setHistory((h) => h.map((x) => (x.id === nu.id ? nu : x)))}
+                />
               ))}
             </ul>
           )}
