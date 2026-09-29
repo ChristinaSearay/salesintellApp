@@ -19,8 +19,9 @@ from constants.recommended_actions import CUSTOMER_KIND
 from constants.rfm import RelationshipFlag
 from utils.candidates import Candidate, build_candidate_pool, opportunity_candidates
 from utils import mute, playbook
-from utils.intel import effective_context, latest_update, live_hook_set, load_updates
+from utils.intel import add_update, effective_context, latest_update, live_hook_set, load_updates
 from utils.relationship import flag_for
+from utils.summariser import summarise_note
 from utils.text import count_noun
 from utils.preferences import (
     apply_acceptance,
@@ -229,6 +230,7 @@ def customer_summary(code: str) -> dict:
         "hook_items": [{"text": h, "live": h in live} for h in hooks],
         "advice": latest.advice if latest else "",
         "intel_updated": latest.ts if latest else "",
+        "intel_source": latest.source if latest else "",
         "intel_count": len(load_updates(code)),
         "next_contact": (notes.next_contact if notes else "") or "",
         "snapshot": (f"{count_noun(p.frequency, 'order')} · ${p.monetary:,.0f} in 24 months · "
@@ -350,3 +352,17 @@ def group_names() -> List[str]:
 
 def intel_payload(code: str) -> dict:
     return {"code": code, "updates": [u.to_dict() for u in load_updates(code)]}
+
+
+def record_note(code: str, text: str, n: int = 3) -> dict:
+    """A note the rep typed on this customer's page. Summarised for this
+    customer only — no matching, the page already says who — and saved
+    straight away, so "What's going on", the next move and the pitches all
+    move on the same tap. Raises ValueError on an empty note, RuntimeError
+    when the summariser can't run."""
+    text = (text or "").strip()
+    if not text:
+        raise ValueError("Write a note first.")
+    name = _engine()["profiles"][code].customer.name
+    add_update(summarise_note(code, name, text, group_names()))
+    return actions_payload(code, n)

@@ -31,6 +31,9 @@ export default function VisitPage({ params }) {
   const [ideaTitle, setIdeaTitle] = useState("");
   const [ideaDetail, setIdeaDetail] = useState("");
   const [ideaErr, setIdeaErr] = useState(null);
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [noteText, setNoteText] = useState("");
+  const [noteErr, setNoteErr] = useState(null);
   const backHref = useBackHref();
 
   useEffect(() => {
@@ -86,6 +89,24 @@ export default function VisitPage({ params }) {
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e) {
       setIdeaErr(String(e.message || e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // A note typed here is already about this customer — no matching step. The
+  // engine summarises it, saves it and hands back the new next move + pitches.
+  async function saveNote() {
+    setBusy(true);
+    setNoteErr(null);
+    try {
+      const p = await api.addCustomerNote(code, noteText.trim());
+      setPrep(p);
+      setMarks(initMarks(p));
+      setNoteOpen(false);
+      setNoteText("");
+    } catch (e) {
+      setNoteErr(String(e.message || e));
     } finally {
       setBusy(false);
     }
@@ -220,7 +241,9 @@ export default function VisitPage({ params }) {
           </Link>
         </div>
         {prep.intelUpdated && (
-          <p className="mt-1 text-[11px] text-muted-foreground">Latest from WhatsApp · {prep.intelUpdated}</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {prep.intelFromNote ? "Latest note" : "Latest from WhatsApp"} · {prep.intelUpdated}
+          </p>
         )}
         <ul className="mt-3 flex flex-col gap-2.5">
           {prep.highlights.map((h, i) => (
@@ -234,6 +257,48 @@ export default function VisitPage({ params }) {
           <p className="mt-3 rounded-2xl bg-info-soft px-3.5 py-2.5 text-[13px] leading-snug text-info">
             <span className="font-semibold">Suggested next move: </span>{prep.advice}
           </p>
+        )}
+
+        {/* The rep's own note, straight onto this customer — summarised into
+            the bullets above and a fresh next move, same as a WhatsApp update. */}
+        {noteOpen ? (
+          <div className="mt-3.5 border-t border-border pt-3.5">
+            <textarea
+              value={noteText}
+              onChange={(e) => setNoteText(e.target.value)}
+              autoFocus
+              rows={4}
+              placeholder={`What's happening with ${prep.contact?.name?.split(" ")[0] || a.name}? e.g. "Wants photos of the omega chain before she orders"`}
+              className="w-full rounded-xl border border-border bg-background p-3 text-[15px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/70 focus:ring-2 focus:ring-primary/30"
+            />
+            {noteErr && <p className="mt-1.5 text-[13px] font-medium text-danger">{noteErr}</p>}
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                onClick={saveNote}
+                disabled={busy || noteText.trim().length < 3}
+                className="h-11 flex-1 rounded-xl bg-primary text-[14px] font-semibold text-primary-foreground transition active:scale-[0.99] disabled:opacity-50"
+              >
+                {busy ? "Reading your note…" : <><span aria-hidden>✨</span> Save &amp; suggest next move</>}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setNoteOpen(false); setNoteErr(null); }}
+                disabled={busy}
+                className="h-11 rounded-xl px-4 text-[14px] font-semibold text-muted-foreground ring-1 ring-border"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setNoteOpen(true)}
+            className="mt-3.5 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-secondary/70 text-[14px] font-semibold text-foreground ring-1 ring-primary/25 transition active:scale-[0.99]"
+          >
+            <span aria-hidden>📝</span> What&apos;s going on?
+          </button>
         )}
       </section>
 

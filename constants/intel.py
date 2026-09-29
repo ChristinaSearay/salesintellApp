@@ -11,7 +11,7 @@ from constants.rfm import RelationshipFlag
 
 class IntelSource(Enum):
     WHATSAPP = "whatsapp"
-    MANUAL = "manual"
+    MANUAL = "manual"   # a rep's note, typed on the customer's page or the queue
 
 
 # Newest live hooks shown ahead of the baseline; keep the card readable.
@@ -35,10 +35,28 @@ RELATIONSHIP_SIGNALS = tuple(f.name for f in RelationshipFlag if f is not Relati
 UNCHANGED = "UNCHANGED"
 
 
+def _intel_properties(group_names) -> dict:
+    """What the summariser extracts about one customer, whoever it is."""
+    return {
+        "hooks": {"type": "array", "items": {"type": "string"}},
+        "opportunity_groups": {"type": "array", "items": {"type": "string", "enum": list(group_names)}},
+        "referenced_products": {"type": "array", "items": {"type": "string"}},
+        "prior_incentive": {"type": "string"},
+        "relationship": {"type": "string", "enum": list(RELATIONSHIP_SIGNALS)},
+        "next_contact": {"type": "string"},
+        "advice": {"type": "string"},
+    }
+
+
 def extraction_schema(group_names) -> dict:
     """JSON schema for one summariser call: a list of per-customer extractions.
     `customer_code` is free text (hundreds of customers is too many for an
     enum); the summariser validates it against the directory afterwards."""
+    props = {
+        "customer_code": {"type": ["string", "null"]},
+        "customer_as_written": {"type": "string"},
+        **_intel_properties(group_names),
+    }
     return {
         "type": "object",
         "properties": {
@@ -46,24 +64,24 @@ def extraction_schema(group_names) -> dict:
                 "type": "array",
                 "items": {
                     "type": "object",
-                    "properties": {
-                        "customer_code": {"type": ["string", "null"]},
-                        "customer_as_written": {"type": "string"},
-                        "hooks": {"type": "array", "items": {"type": "string"}},
-                        "opportunity_groups": {"type": "array", "items": {"type": "string", "enum": list(group_names)}},
-                        "referenced_products": {"type": "array", "items": {"type": "string"}},
-                        "prior_incentive": {"type": "string"},
-                        "relationship": {"type": "string", "enum": list(RELATIONSHIP_SIGNALS)},
-                        "next_contact": {"type": "string"},
-                        "advice": {"type": "string"},
-                    },
-                    "required": ["customer_code", "customer_as_written", "hooks", "opportunity_groups",
-                                 "referenced_products", "prior_incentive", "relationship",
-                                 "next_contact", "advice"],
+                    "properties": props,
+                    "required": list(props),
                     "additionalProperties": False,
                 },
             }
         },
         "required": ["updates"],
+        "additionalProperties": False,
+    }
+
+
+def note_schema(group_names) -> dict:
+    """JSON schema for a rep's note typed on one customer's page: the customer
+    is already known, so there is nothing to match — one extraction, no list."""
+    props = _intel_properties(group_names)
+    return {
+        "type": "object",
+        "properties": props,
+        "required": list(props),
         "additionalProperties": False,
     }

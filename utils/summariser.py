@@ -1,15 +1,20 @@
-"""Turn a raw WhatsApp dump into structured per-customer IntelUpdates.
+"""Turn a raw WhatsApp dump — or a rep's note on one customer — into
+structured per-customer IntelUpdates.
 
 One Claude call with a JSON-schema constrained output; the model matches each
 message block to a POC customer (or null when it's about someone else), and
 emits hooks / opportunity groups / incentives in the vocabulary the engine
-already uses. Nothing is persisted here — the caller shows the proposals to
-the rep for confirmation, then saves via utils.intel.add_update().
+already uses. Nothing is persisted here — for a WhatsApp dump the caller
+shows the proposals to the rep for confirmation, then saves via
+utils.intel.add_update(); a note typed on a customer's page is already filed
+by the rep, so the server saves its one update straight away.
 """
+import json
 import os
 from typing import Iterable, List
 
-from constants.intel import DEFAULT_INTEL_MODEL, INTEL_MAX_TOKENS, IntelSource, extraction_schema
+from constants.intel import (DEFAULT_INTEL_MODEL, INTEL_MAX_TOKENS, UNCHANGED, IntelSource,
+                             extraction_schema, note_schema)
 from utils.customers import load_customers
 from utils.intel import IntelUpdate
 
@@ -22,17 +27,8 @@ CUSTOMER_ALIASES = {
     "S141": ("Noonan's", "Noonans", "Showcase"),
 }
 
-SYSTEM_PROMPT = """You read internal WhatsApp messages posted by a jewellery wholesaler's sales team
-(Searay) about their retail customers, and turn them into structured account intel for a
-sales-prep app.
-
-Rules:
-- Split the dump into one update per customer discussed. A message that names no customer
-  continues the customer discussed in the message immediately before it.
-- Match the customer to the list provided. Match on trading name, nickname, or staff names
-  listed as aliases. If a customer is not in the list, set customer_code to null and copy the
-  name as written — do NOT force a match (e.g. "Atlas Casula" is NOT "Atlas Wetherill Park").
-- hooks: 1–3 short, factual bullets a rep should know before walking in (what happened, what
+# How each field is filled in — shared by the WhatsApp dump and the rep's note.
+_FIELD_RULES = """- hooks: 1–3 short, factual bullets a rep should know before walking in (what happened, what
   they asked for, what they're unhappy about). Plain language, no fluff, past tense.
 - opportunity_groups: only product groups from the provided list that the conversation gives
   a reason to pitch. Empty if none.
@@ -49,6 +45,27 @@ Rules:
 - next_contact: a timing cue if one is stated ("when the new samples land"). Else empty.
 - advice: one sentence on what the rep should do next with this customer, given the message."""
 
+SYSTEM_PROMPT = """You read internal WhatsApp messages posted by a jewellery wholesaler's sales team
+(Searay) about their retail customers, and turn them into structured account intel for a
+sales-prep app.
+
+Rules:
+- Split the dump into one update per customer discussed. A message that names no customer
+  continues the customer discussed in the message immediately before it.
+- Match the customer to the list provided. Match on trading name, nickname, or staff names
+  listed as aliases. If a customer is not in the list, set customer_code to null and copy the
+  name as written — do NOT force a match (e.g. "Atlas Casula" is NOT "Atlas Wetherill Park").
+""" + _FIELD_RULES
+
+# A note typed on one customer's page: the rep has already said who it's about.
+NOTE_SYSTEM_PROMPT = """You read a note a jewellery wholesaler's sales rep (Searay) typed on one retail
+customer's page, and turn it into structured account intel for a sales-prep app.
+
+Rules:
+- The whole note is about the customer named in the message, even where it only names
+  their staff ("Sasha wants photos") or no one at all. Never split it or re-assign it.
+""" + _FIELD_RULES
+
 
 def _customer_block(customers) -> str:
     lines = []
@@ -58,10 +75,13 @@ def _customer_block(customers) -> str:
     return "\n".join(lines)
 
 
-def summarise(text: str, group_names: Iterable[str],
-              source: IntelSource = IntelSource.WHATSAPP) -> List[IntelUpdate]:
-    """Raises RuntimeError with a rep-readable message when the API is not
-    configured or the call fails."""
+def _groups_block(groups) -> str:
+    return "Product groups we sell:\n" + "\n".join(f"- {g}" for g in groups)
+
+
+def _extract(system: str, user: str, schema: dict) -> dict:
+    """One schema-constrained Claude call. Raises RuntimeError with a
+    rep-readable message when the API is not configured or the call fails."""
     try:
         import anthropic
     except ImportError as exc:  # pragma: no cover
@@ -70,20 +90,14 @@ def summarise(text: str, group_names: Iterable[str],
     if not (os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN")):
         raise RuntimeError("Summariser is not configured: set ANTHROPIC_API_KEY in .env.")
 
-    groups = sorted({g for g in group_names if g})
-    directory = load_customers()
     client = anthropic.Anthropic()
-    user = (f"Customers we track:\n{_customer_block(directory.values())}\n\n"
-            f"Product groups we sell:\n" + "\n".join(f"- {g}" for g in groups) +
-            f"\n\nWhatsApp dump:\n\"\"\"\n{text.strip()}\n\"\"\"")
     try:
         response = client.messages.create(
             model=os.environ.get("SEARAY_INTEL_MODEL", DEFAULT_INTEL_MODEL),
             max_tokens=INTEL_MAX_TOKENS,
-            system=SYSTEM_PROMPT,
+            system=system,
             messages=[{"role": "user", "content": user}],
-            output_config={"format": {"type": "json_schema",
-                                      "schema": extraction_schema(groups)}},
+            output_config={"format": {"type": "json_schema", "schema": schema}},
         )
     except anthropic.AuthenticationError as exc:
         raise RuntimeError("Summariser rejected the API key (ANTHROPIC_API_KEY).") from exc
@@ -94,8 +108,19 @@ def summarise(text: str, group_names: Iterable[str],
 
     if response.stop_reason == "refusal":
         raise RuntimeError("Summariser declined to process this text.")
-    import json
-    payload = json.loads(next(b.text for b in response.content if b.type == "text"))
+    return json.loads(next(b.text for b in response.content if b.type == "text"))
+
+
+def summarise(text: str, group_names: Iterable[str],
+              source: IntelSource = IntelSource.WHATSAPP) -> List[IntelUpdate]:
+    """A WhatsApp dump about any number of customers → one proposal each,
+    matched against the directory. Raises RuntimeError (see _extract)."""
+    groups = sorted({g for g in group_names if g})
+    directory = load_customers()
+    user = (f"Customers we track:\n{_customer_block(directory.values())}\n\n"
+            f"{_groups_block(groups)}"
+            f"\n\nWhatsApp dump:\n\"\"\"\n{text.strip()}\n\"\"\"")
+    payload = _extract(SYSTEM_PROMPT, user, extraction_schema(groups))
 
     updates = []
     for u in payload.get("updates", []):
@@ -114,3 +139,27 @@ def summarise(text: str, group_names: Iterable[str],
             advice=u.get("advice", ""),
         ))
     return updates
+
+
+def summarise_note(code: str, name: str, text: str,
+                   group_names: Iterable[str]) -> IntelUpdate:
+    """A rep's note typed on one customer's page → one update for that
+    customer. No matching step: the page already says who it's about.
+    Raises RuntimeError (see _extract)."""
+    groups = sorted({g for g in group_names if g})
+    user = (f"Customer: {code}: {name}\n\n{_groups_block(groups)}"
+            f"\n\nRep's note:\n\"\"\"\n{text.strip()}\n\"\"\"")
+    u = _extract(NOTE_SYSTEM_PROMPT, user, note_schema(groups))
+    return IntelUpdate(
+        customer_code=code,
+        hooks=list(u.get("hooks", [])),
+        source=IntelSource.MANUAL.value,
+        raw_text=text.strip(),
+        customer_as_written=name,
+        opportunity_groups=list(u.get("opportunity_groups", [])),
+        referenced_products=list(u.get("referenced_products", [])),
+        prior_incentive=u.get("prior_incentive", ""),
+        relationship=u.get("relationship", UNCHANGED),
+        next_contact=u.get("next_contact", ""),
+        advice=u.get("advice", ""),
+    )

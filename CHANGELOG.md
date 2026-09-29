@@ -2,6 +2,9 @@
 
 ## 2026-09-29
 
+### Added
+- "What's going on?" button on a customer's page: type a note straight onto that customer (no customer matching), and it is summarised into their "What's going on" with a fresh suggested next move and re-ranked pitches.
+
 ### Fixed
 - Order counts read "1 order", not "1 orders", in the customer snapshot, the pitch text and the reports.
 

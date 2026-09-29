@@ -269,13 +269,15 @@ function InboxInner() {
             Saved updates · {focusName || focusCode}
           </h2>
           {history.length === 0 ? (
-            <p className="mt-2 text-[14px] text-muted-foreground">Nothing from WhatsApp yet.</p>
+            <p className="mt-2 text-[14px] text-muted-foreground">No updates or notes yet.</p>
           ) : (
             <ul className="mt-3 flex flex-col gap-2.5">
               {[...history].reverse().map((u) => (
                 <li key={u.id} className="rounded-2xl border border-border bg-card p-3.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-medium text-muted-foreground">💬 {whenPhrase(u.ts)}</span>
+                    <span className="text-[11px] font-medium text-muted-foreground">
+                      {u.source === "manual" ? "📝 Note" : "💬 WhatsApp"} · {whenPhrase(u.ts)}
+                    </span>
                     <button onClick={() => remove(u)} className="text-[12px] font-semibold text-muted-foreground active:text-danger">Remove</button>
                   </div>
                   <ul className="mt-2 flex flex-col gap-1 text-[14px] leading-snug text-foreground">

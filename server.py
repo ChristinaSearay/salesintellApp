@@ -21,6 +21,7 @@ API:
   GET  /api/intel/<code>                 -> saved live updates for a customer
   POST /api/intel/<code>                 -> save one update (body = a proposal) -> refreshed prep
   POST /api/intel/<code>/delete          -> {id} -> refreshed prep
+  POST /api/intel/<code>/note            -> {text} -> summarise a note for this customer, save -> refreshed prep
 """
 import json
 import os
@@ -40,6 +41,7 @@ from utils.recommend import (
     intel_payload,
     is_known_customer,
     record_idea,
+    record_note,
     reset,
     submit_feedback,
 )
@@ -244,6 +246,11 @@ class Handler(BaseHTTPRequestHandler):
             if len(parts) == 4 and parts[3] == "delete":
                 delete_update(code, body.get("id", ""))
                 return self._json(actions_payload(code))
+            if len(parts) == 4 and parts[3] == "note":
+                # Typed on the customer's own page: no matching, saved at once.
+                return self._json(record_note(code, body.get("text", "")))
+        except ValueError as exc:    # rep-fixable: empty note
+            return self._json({"error": str(exc)}, status=400)
         except RuntimeError as exc:  # summariser not configured / API failure
             return self._json({"error": str(exc)}, status=503)
         except Exception as exc:  # never 500 silently in a demo
