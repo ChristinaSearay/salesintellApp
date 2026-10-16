@@ -1,5 +1,10 @@
-"""The customer directory: every customer with a completed order or an invoice
-in the data (~24 months), not just the POC five.
+"""The customer directory: every customer Unleashed holds, whether or not they
+have ordered, plus anyone with an order or invoice in the data (~24 months) and
+the POC five.
+
+A shop with an account but no orders yet is still a customer a rep visits and
+searches for (Atlas Jewellers - Parramatta was missing). Without orders or
+invoices it is profiled as Segment.NEW_PROSPECT.
 
 Name precedence: curated POC name > customer master (Unleashed sync) > the
 most recent invoice's customer name > the code itself.
@@ -21,7 +26,7 @@ def _clean(value) -> str:
 
 @lru_cache(maxsize=1)
 def load_customers() -> Dict[str, Customer]:
-    """code -> Customer for every active customer. Cached per process."""
+    """code -> Customer for every known customer. Cached per process."""
     # The POC five are always present, even once they age out of the 24-month
     # window (The Cut has): they are curated, and reports are built from them.
     codes = set(TARGET_BY_CODE)
@@ -46,6 +51,9 @@ def load_customers() -> Dict[str, Customer]:
         _clean(row.get(CustomerCol.CODE)): _clean(row.get(CustomerCol.NAME))
         for row in customer_rows()
     }
+    # The customer master (live mode) lists every account, ordered or not.
+    # CSV mode has no master, so it stays at whoever has traded.
+    codes.update(code for code in master_names if code)
 
     # Businesses a rep created from a visit: no orders or invoices yet, so they
     # reach the directory the same way the curated five do once they age out.

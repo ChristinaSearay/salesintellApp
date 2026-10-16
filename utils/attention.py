@@ -120,7 +120,7 @@ def _muted_codes(profiles: Dict[str, object]) -> set:
 
 
 def ranked() -> List[Attention]:
-    """Every active customer, in queue order."""
+    """Every customer, in queue order."""
     now = datetime.now(timezone.utc)
     notes = latest_updates()
     profiles = all_profiles()

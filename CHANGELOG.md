@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-16
+
+### Fixed
+- Every customer in Unleashed now shows in the app, including accounts with no orders or invoices yet (e.g. Atlas Jewellers - Parramatta), as "New — no orders yet".
+
 ## 2026-09-29
 
 ### Added

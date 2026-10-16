@@ -250,7 +250,7 @@ def _product_order_codes(sales_rows) -> set:
 
 
 def build_profiles(codes: Optional[Iterable[str]] = None) -> List[CustomerProfile]:
-    """Profiles for `codes` (in that order), or for every active customer
+    """Profiles for `codes` (in that order), or for every customer
     (biggest 24-month spend first) when `codes` is None."""
     directory = load_customers()
     wanted = list(directory) if codes is None else [c for c in codes if c in directory]

@@ -9,7 +9,7 @@ here.
 
 API:
   GET  /api/reasons                      -> rejection-reason chips
-  GET  /api/customers                    -> account cards for every active customer (by spend)
+  GET  /api/customers                    -> account cards for every customer (by spend)
   GET  /api/attention                    -> the top customers that need attention now
   POST /api/attention/<code>/note        -> {text, mute?} -> save a rep note, returns the refreshed queue
   POST /api/attention/<code>/unmute      -> alert on this account again -> refreshed prep

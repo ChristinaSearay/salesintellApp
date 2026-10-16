@@ -256,7 +256,7 @@ def customer_summary(code: str) -> dict:
 
 
 def all_profiles() -> Dict[str, "CustomerProfile"]:
-    """code -> CustomerProfile for every active customer (cached engine)."""
+    """code -> CustomerProfile for every customer (cached engine)."""
     return _engine()["profiles"]
 
 
@@ -285,7 +285,7 @@ def account_card(code: str) -> dict:
 
 
 def customer_list() -> List[dict]:
-    """Every active customer, biggest 24-month spend first."""
+    """Every customer Unleashed holds, biggest 24-month spend first."""
     return [account_card(code) for code in _engine()["profiles"]]
 
 

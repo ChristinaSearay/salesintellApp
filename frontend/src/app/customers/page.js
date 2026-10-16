@@ -1,6 +1,6 @@
 "use client";
 
-// All customers — every active Unleashed customer, biggest 2-year spend first,
+// All customers — every Unleashed customer, biggest 2-year spend first,
 // searchable and paged. Opened from the "All customers" button on the home
 // screen (which shows only the Needs attention queue).
 
