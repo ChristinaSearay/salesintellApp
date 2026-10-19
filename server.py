@@ -190,6 +190,7 @@ class Handler(BaseHTTPRequestHandler):
                     contact_name=body.get("contactName", ""),
                     phone=body.get("phone", ""),
                     email=body.get("email", ""),
+                    shop_phone=body.get("shopPhone", ""),
                 )
                 note = (body.get("note") or "").strip()
                 if note:

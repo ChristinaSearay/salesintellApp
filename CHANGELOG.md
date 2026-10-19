@@ -2,6 +2,12 @@
 
 ## 2026-10-19
 
+### Added
+- "Add new customer" on All customers: a rep who visited a shop that isn't in Unleashed enters the business name, sees any possible duplicates, and creates it in Unleashed with a customer code, contact name, mobile, shop phone and email. A search with no match offers to add that name.
+- Shop phone field when creating a customer from a visit, sent to Unleashed as the customer's phone number.
+
+## 2026-10-19
+
 ### Fixed
 - First requests of a new day no longer fail with "Can't reach the engine": the daily rebuild runs in the background while the app keeps serving the previous day's numbers, instead of rebuilding inside each waiting request.
 

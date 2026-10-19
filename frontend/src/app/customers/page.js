@@ -8,7 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { api, matchesAccount } from "@/lib/api";
 import AccountCard from "@/components/AccountCard";
-import { SCREEN, useRememberScreen } from "@/lib/nav";
+import { NEW_CUSTOMER, SCREEN, useRememberScreen } from "@/lib/nav";
 
 const PAGE_SIZE = 10;
 // Remembered for the tab, so "back" from a visit lands on the same page.
@@ -57,6 +57,11 @@ export default function CustomersPage() {
   const current = Math.min(page, pageCount - 1);
   const shown = matches.slice(current * PAGE_SIZE, (current + 1) * PAGE_SIZE);
 
+  // A search that found nothing is usually the shop the rep just visited.
+  const newCustomerHref = searching
+    ? `${NEW_CUSTOMER}?name=${encodeURIComponent(query.trim())}`
+    : NEW_CUSTOMER;
+
   const onSearch = (value) => {
     setQuery(value);
     setPage(0);
@@ -98,6 +103,13 @@ export default function CustomersPage() {
             className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-[16px] text-foreground shadow-[0_8px_24px_-18px_rgba(33,29,23,0.5)] outline-none placeholder:text-muted-foreground/70 focus:ring-2 focus:ring-primary/30"
           />
         </div>
+        <Link
+          href={newCustomerHref}
+          className="mt-1 flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-card text-[13.5px] font-semibold text-foreground ring-1 ring-primary/25 transition active:scale-[0.99]"
+        >
+          <span aria-hidden>➕</span>{" "}
+          {searching && matches.length === 0 ? `Add “${query.trim()}” as a new customer` : "Add new customer"}
+        </Link>
       </header>
 
       {err && (

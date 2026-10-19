@@ -160,7 +160,7 @@ def check(name: str, known: Optional[Dict[str, str]] = None) -> ProspectCheck:
 
 
 def build_payload(name: str, code: str, contact_name: str = "", phone: str = "",
-                  email: str = "") -> dict:
+                  email: str = "", shop_phone: str = "") -> dict:
     """The bare-minimum Unleashed Customer object."""
     first, _, last = (contact_name or "").strip().partition(" ")
     payload = {
@@ -176,11 +176,13 @@ def build_payload(name: str, code: str, contact_name: str = "", phone: str = "",
         payload[ProspectField.EMAIL] = email.strip()
     if phone.strip():
         payload[ProspectField.MOBILE] = phone.strip()
+    if shop_phone.strip():
+        payload[ProspectField.PHONE] = shop_phone.strip()
     return payload
 
 
 def create(name: str, code: str = "", contact_name: str = "", phone: str = "",
-           email: str = "", dry_run: bool = False) -> dict:
+           email: str = "", shop_phone: str = "", dry_run: bool = False) -> dict:
     """Create the customer in Unleashed and return {code, name, guid, created}.
 
     dry_run returns exactly what would be sent without calling Unleashed.
@@ -191,7 +193,7 @@ def create(name: str, code: str = "", contact_name: str = "", phone: str = "",
     if chosen in {c.upper() for c in known}:
         raise ValueError(f"Customer code {chosen} is already used.")
 
-    payload = build_payload(clean, chosen, contact_name, phone, email)
+    payload = build_payload(clean, chosen, contact_name, phone, email, shop_phone)
     if dry_run:
         return {"code": chosen, "name": clean, "guid": payload[ProspectField.GUID],
                 "created": False, "payload": payload}
@@ -200,7 +202,8 @@ def create(name: str, code: str = "", contact_name: str = "", phone: str = "",
     # Remember it locally: the sync cache won't hold it until the next
     # `uv run sync`, and the rep needs the customer to exist in the app now.
     save_prospect(chosen, clean, payload[ProspectField.GUID],
-                  contact_name=contact_name, phone=phone, email=email)
+                  contact_name=contact_name, phone=phone, email=email,
+                  shop_phone=shop_phone)
     load_customers.cache_clear()
     return {"code": chosen, "name": clean, "guid": payload[ProspectField.GUID],
             "created": True}

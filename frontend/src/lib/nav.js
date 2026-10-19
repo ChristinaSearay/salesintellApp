@@ -4,6 +4,8 @@
 import { useEffect, useState } from "react";
 
 export const SCREEN = { ATTENTION: "/", CUSTOMERS: "/customers" };
+// Not a list screen: "back" from a customer created here goes to All customers.
+export const NEW_CUSTOMER = "/customers/new";
 const BACK_KEY = "searay.back";
 
 export function useRememberScreen(path) {

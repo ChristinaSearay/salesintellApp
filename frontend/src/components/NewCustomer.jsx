@@ -7,12 +7,15 @@ import { api, PROSPECT_OUTCOME } from "@/lib/api";
 // near-duplicates first and show them, so "Temple of the Sun" can't quietly
 // become a second record for a shop we already have. Creating is one tap,
 // but always the rep's tap — nothing reaches the ERP on its own.
-export default function NewCustomer({ name, onCreated, onLink }) {
+// startOpen skips the "Create … in Unleashed" tap when the rep came here on
+// purpose (Add new customer) rather than from an unmatched WhatsApp update.
+export default function NewCustomer({ name, onCreated, onLink, startOpen = false }) {
   const [check, setCheck] = useState(null);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(startOpen);
   const [code, setCode] = useState("");
   const [contact, setContact] = useState("");
   const [phone, setPhone] = useState("");
+  const [shopPhone, setShopPhone] = useState("");
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
@@ -30,7 +33,7 @@ export default function NewCustomer({ name, onCreated, onLink }) {
     setErr(null);
     try {
       const made = await api.createProspect({
-        name, code, contactName: contact, phone, email,
+        name, code, contactName: contact, phone, shopPhone, email,
       });
       onCreated(made);
     } catch (e) {
@@ -106,6 +109,13 @@ export default function NewCustomer({ name, onCreated, onLink }) {
                 onChange={(e) => setPhone(e.target.value)}
                 inputMode="tel"
                 placeholder="Mobile (optional)"
+                className="h-10 w-full rounded-xl border border-border bg-background px-3 text-[15px] text-foreground outline-none placeholder:text-muted-foreground/70 focus:ring-2 focus:ring-primary/30"
+              />
+              <input
+                value={shopPhone}
+                onChange={(e) => setShopPhone(e.target.value)}
+                inputMode="tel"
+                placeholder="Shop phone (optional)"
                 className="h-10 w-full rounded-xl border border-border bg-background px-3 text-[15px] text-foreground outline-none placeholder:text-muted-foreground/70 focus:ring-2 focus:ring-primary/30"
               />
               <input
