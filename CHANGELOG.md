@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-19
+
+### Fixed
+- First requests of a new day no longer fail with "Can't reach the engine": the daily rebuild runs in the background while the app keeps serving the previous day's numbers, instead of rebuilding inside each waiting request.
+
 ## 2026-10-16
 
 ### Fixed

@@ -5,6 +5,7 @@ back into the one-page reports automatically. Loads the heavy data once and
 caches it; per-customer preferences are read fresh each call so the latest
 learning always applies.
 """
+import threading
 from typing import Dict, List, Optional
 
 from constants.config import anchor_date
@@ -35,24 +36,46 @@ from utils.products import load_catalogue, load_product_master, make_resolver
 from utils.profile import build_profiles
 
 _CACHE: dict = {}
+_BUILD_LOCK = threading.Lock()
+_REFRESHING = threading.Event()
+
+
+def _build_engine(anchor) -> dict:
+    master = load_product_master()
+    catalogue = load_catalogue(master)
+    resolve = make_resolver(master, catalogue)
+    profiles = {p.customer.code: p for p in build_profiles()}
+    pools = {code: build_candidate_pool(p, catalogue, resolve)
+             for code, p in profiles.items()}
+    groups = sorted({i.group for i in catalogue if i.group})
+    return dict(resolve=resolve, profiles=profiles, pools=pools,
+                catalogue=catalogue, groups=groups, anchor=anchor)
+
+
+def _refresh(anchor) -> None:
+    global _CACHE
+    try:
+        with _BUILD_LOCK:
+            if _CACHE.get("anchor") != anchor:
+                _CACHE = _build_engine(anchor)
+    finally:
+        _REFRESHING.clear()
 
 
 def _engine() -> dict:
     # Keyed on the anchor date: profiles bake in recency and RFM scores, so a
     # long-running server must rebuild them when the day rolls over, or every
     # "days since last order" stays frozen at whenever the process started.
+    # The rollover rebuild runs in the background while requests keep reading
+    # yesterday's engine: on the deployed box a build takes 20s+, and doing it
+    # inside a request (one per concurrent request, since the cache was cleared
+    # first) ran past the frontend proxy's timeout — "Can't reach the engine".
     today = anchor_date()
-    if not _CACHE or _CACHE.get("anchor") != today:
-        _CACHE.clear()
-        master = load_product_master()
-        catalogue = load_catalogue(master)
-        resolve = make_resolver(master, catalogue)
-        profiles = {p.customer.code: p for p in build_profiles()}
-        pools = {code: build_candidate_pool(p, catalogue, resolve)
-                 for code, p in profiles.items()}
-        groups = sorted({i.group for i in catalogue if i.group})
-        _CACHE.update(resolve=resolve, profiles=profiles, pools=pools,
-                      catalogue=catalogue, groups=groups, anchor=today)
+    if not _CACHE:
+        _refresh(today)
+    elif _CACHE["anchor"] != today and not _REFRESHING.is_set():
+        _REFRESHING.set()
+        threading.Thread(target=_refresh, args=(today,), daemon=True).start()
     return _CACHE
 
 
