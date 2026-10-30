@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-30
+
+### Added
+- View Products screen ("Products" on the home screen): search every Unleashed product by code or description, filter by group and in stock, with quantities as of the last sync.
+- Product page with live stock from Unleashed: product photo, on hand, available, allocated and incoming totals, and on hand / allocated / available per warehouse grouped as Our stock, At customers (consignment) and Not for sale.
+
+### Fixed
+- Unleashed requests whose parameters contain spaces, "+" or "/" (e.g. product code 18KGDW04042+3CM) no longer fail with HTTP 403.
+
 ## 2026-10-29
 
 ### Added

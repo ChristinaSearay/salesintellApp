@@ -32,16 +32,19 @@ def signature(query_string: str) -> str:
     return base64.b64encode(digest).decode("ascii")
 
 
-def _request(endpoint: str, page: int, params: dict) -> dict:
-    # Sign exactly the query string we send (order doesn't matter as long as
-    # they match — Unleashed re-signs the query string it receives).
-    query = urllib.parse.urlencode(sorted((params or {}).items()))
-    url = f"{API_URL}/{endpoint}/Page/{page}"
-    if query:
-        url += f"?{query}"
+def _get(path: str, params: dict | None) -> dict:
+    # Unleashed re-signs the DECODED query string, so sign the plain text and
+    # send it percent-encoded. Signing the encoded form only works while no
+    # value needs encoding — product codes like "18KGDW04042+3CM" or
+    # "18KAR322WBDIASIZEL1/2" (and any space) came back 403.
+    pairs = sorted((params or {}).items())
+    plain = "&".join(f"{k}={v}" for k, v in pairs)
+    url = f"{API_URL}/{path}"
+    if pairs:
+        url += "?" + urllib.parse.urlencode(pairs, quote_via=urllib.parse.quote, safe="")
     req = urllib.request.Request(url, headers={
         "api-auth-id": API_ID,
-        "api-auth-signature": signature(query),
+        "api-auth-signature": signature(plain),
         "Accept": "application/json",
         "Content-Type": "application/json",
     })
@@ -50,7 +53,19 @@ def _request(endpoint: str, page: int, params: dict) -> dict:
             return json.loads(resp.read().decode("utf-8"))
     except HTTPError as exc:
         body = exc.read().decode("utf-8", "replace")[:300]
-        raise RuntimeError(f"Unleashed {endpoint} page {page} → HTTP {exc.code}: {body}") from exc
+        raise RuntimeError(f"Unleashed {path} → HTTP {exc.code}: {body}") from exc
+
+
+def _request(endpoint: str, page: int, params: dict) -> dict:
+    return _get(f"{endpoint}/Page/{page}", params)
+
+
+def get_one(path: str, params: dict | None = None) -> dict:
+    """A single, non-paged GET (e.g. StockOnHand/<productGuid>)."""
+    if not has_credentials():
+        raise RuntimeError(
+            "Unleashed credentials missing — set UNLEASHED_API_ID and UNLEASHED_API_KEY.")
+    return _get(path, params)
 
 
 def post(endpoint: str, resource_id: str, payload: dict) -> dict:

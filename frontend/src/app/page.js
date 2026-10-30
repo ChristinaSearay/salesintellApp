@@ -8,7 +8,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
-import { SCREEN, useRememberScreen } from "@/lib/nav";
+import { PRODUCTS, SCREEN, useRememberScreen } from "@/lib/nav";
 import AttentionCard from "@/components/AttentionCard";
 
 const PILL =
@@ -37,19 +37,20 @@ export default function AttentionPage() {
   return (
     <main className="mx-auto min-h-screen w-full max-w-md px-5 pb-12">
       <header className="pt-12">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-[13px] font-semibold uppercase tracking-[0.18em] text-primary">
-            Searay
-          </span>
-          <nav aria-label="Screens" className="flex items-center gap-2">
-            <Link href={SCREEN.CUSTOMERS} className={PILL}>
-              <span aria-hidden>👥</span> All customers
-            </Link>
-            <Link href="/inbox" className={PILL}>
-              <span aria-hidden>💬</span> WhatsApp
-            </Link>
-          </nav>
-        </div>
+        <span className="text-[13px] font-semibold uppercase tracking-[0.18em] text-primary">
+          Searay
+        </span>
+        <nav aria-label="Screens" className="mt-3 flex flex-wrap items-center gap-2">
+          <Link href={SCREEN.CUSTOMERS} className={PILL}>
+            <span aria-hidden>👥</span> All customers
+          </Link>
+          <Link href="/inbox" className={PILL}>
+            <span aria-hidden>💬</span> WhatsApp
+          </Link>
+          <Link href={PRODUCTS} className={PILL}>
+            <span aria-hidden>💎</span> Products
+          </Link>
+        </nav>
 
         <h1 className="mt-7 font-serif text-[34px] font-semibold leading-[1.05] tracking-[-0.02em] text-balance text-foreground">
           Needs attention

@@ -168,6 +168,69 @@ function toPrep(payload) {
   };
 }
 
+// Quantities arrive as floats (511.0); show whole units without the ".0".
+const qty = (v) => (v || 0).toLocaleString("en-AU", { maximumFractionDigits: 2 });
+
+// One row of the View Products list — stock as of the last sync.
+function toProductRow(p) {
+  return {
+    code: p.code,
+    name: p.description || p.code,
+    group: p.group || "",
+    onHand: qty(p.on_hand),
+    available: qty(p.available),
+    inStock: p.on_hand > 0,
+  };
+}
+
+function toProductList(payload) {
+  return {
+    items: payload.items.map(toProductRow),
+    total: payload.total,
+    page: payload.page,
+    pageCount: payload.page_count,
+    groups: payload.groups,
+  };
+}
+
+// One product, live from Unleashed: totals plus warehouses grouped as
+// Our stock / At customers (consignment) / Not for sale (constants/stock.py).
+function toProductDetail(p) {
+  return {
+    code: p.code,
+    name: p.description || p.code,
+    group: p.group || "",
+    image: p.image || "",
+    obsolete: !!p.obsolete,
+    totals: [
+      { label: "On hand", value: qty(p.totals.on_hand) },
+      { label: "Available", value: qty(p.totals.available) },
+      { label: "Allocated", value: qty(p.totals.allocated) },
+      { label: "Incoming", value: qty(p.totals.on_purchase) },
+    ],
+    groups: p.warehouses.map((g) => ({
+      key: g.group,
+      label: g.label,
+      onHand: qty(g.on_hand),
+      warehouses: g.warehouses.map((w) => ({
+        code: w.code,
+        name: w.name,
+        onHand: qty(w.on_hand),
+        allocated: qty(w.allocated),
+        available: qty(w.available),
+      })),
+    })),
+    checkedAt: whenPhrase(p.checked_at),
+  };
+}
+
+// Same query-string fields as GET /api/products (server.py).
+function productQuery({ q = "", group = "", inStock = false, page = 0 }) {
+  const params = new URLSearchParams({ q, group, page: String(page) });
+  if (inStock) params.set("in_stock", "1");
+  return params.toString();
+}
+
 function toPhoto(code, p) {
   const src = `/api/customer/${code}/photos/${p.id}`;
   return { id: p.id, caption: p.caption || "", when: whenPhrase(p.ts), src, thumb: `${src}/thumb` };
@@ -215,6 +278,23 @@ export const api = {
   // looks (and returns possible duplicates); createProspect writes it.
   checkProspect: (name) => post("/api/prospects/check", { name }),
   createProspect: (prospect) => post("/api/prospects/create", prospect),
+
+  // View Products. The list is the synced catalogue (instant); a product's
+  // warehouse breakdown is asked of Unleashed live, which takes a few seconds.
+  searchProducts: async (filters) => toProductList(await get(`/api/products?${productQuery(filters)}`)),
+  // The synced row for one code, shown while the live lookup is under way.
+  getSyncedProduct: async (code) => {
+    const { items } = await get(`/api/products?${productQuery({ q: code })}`);
+    const row = items.find((p) => p.code === code);
+    return row ? toProductRow(row) : null;
+  },
+  getProduct: async (code) => {
+    const r = await fetch(`/api/product?code=${encodeURIComponent(code)}`);
+    let j = null;
+    try { j = await r.json(); } catch {}
+    if (!r.ok) throw new Error(j?.error || `Couldn’t check Unleashed (${r.status}).`);
+    return toProductDetail(j);
+  },
 };
 
 export const PROSPECT_OUTCOME = {

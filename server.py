@@ -27,22 +27,28 @@ API:
   POST /api/intel/<code>/delete          -> {id} -> refreshed prep
   POST /api/intel/<code>/edit            -> {id, hooks, advice} -> fix a saved update's wording -> refreshed prep
   POST /api/intel/<code>/note            -> {text} -> summarise a note for this customer, save -> refreshed prep
+  GET  /api/products?q=&group=&in_stock=1&page=0 -> synced catalogue search (stock as of last sync)
+  GET  /api/product?code=<code>          -> one product's stock per warehouse, live from Unleashed
 """
 import json
 import os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 from constants.config import DEFAULT_PORT
 from constants.feedback import RejectionReason
 from constants.intel import IntelSource
 from constants.photos import JPEG_CONTENT_TYPE, MAX_UPLOAD_BYTES, PHOTO_CACHE_CONTROL, PhotoSize
+from constants.stock import IN_STOCK_ONLY
 from utils.attention import attention_payload, mute_customer, unmute_customer
 from utils.intel import IntelUpdate, add_note, add_update, delete_update, edit_update
 from utils.photos import add_photo, delete_photo, photos_payload, read_photo
+from utils.product_search import search_products
 from utils.prospects import check as prospect_check, create as create_prospect
+from utils.stock import live_product
 from utils.recommend import (
     actions_payload,
+    catalogue_items,
     customer_list,
     group_names,
     intel_payload,
@@ -122,6 +128,10 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(customer_list())
         if path == "/api/attention":
             return self._json(attention_payload())
+        if path == "/api/products":
+            return self._get_products()
+        if path == "/api/product":
+            return self._get_product()
         parts = path.strip("/").split("/")
         if len(parts) == 3 and parts[0] == "api" and parts[1] == "customer":
             code = self._code_from(parts)
@@ -132,6 +142,34 @@ class Handler(BaseHTTPRequestHandler):
             code = self._code_from(parts)
             return self._json(intel_payload(code)) if code else self.send_error(404)
         self.send_error(404)
+
+    def _query(self):
+        return {k: v[0] for k, v in parse_qs(urlparse(self.path).query).items()}
+
+    def _get_products(self):
+        q = self._query()
+        try:
+            return self._json(search_products(
+                catalogue_items(), group_names(),
+                query=q.get("q", ""),
+                group=q.get("group", ""),
+                in_stock_only=q.get("in_stock") == IN_STOCK_ONLY,
+                page=int(q.get("page", "0")),
+            ))
+        except ValueError as exc:            # unknown group, bad page
+            return self._json({"error": str(exc)}, status=400)
+
+    def _get_product(self):
+        # The code travels in the query string: codes like "18KAR322WBDIASIZEL1/2"
+        # contain a slash, which a path segment can't carry.
+        try:
+            return self._json(live_product(self._query().get("code", "")))
+        except ValueError as exc:
+            return self._json({"error": str(exc)}, status=400)
+        except LookupError as exc:           # not in Unleashed
+            return self._json({"error": str(exc)}, status=404)
+        except RuntimeError as exc:          # Unleashed unreachable / refused / no credentials
+            return self._json({"error": str(exc)}, status=502)
 
     def _read_body(self):
         length = int(self.headers.get("Content-Length", 0) or 0)

@@ -373,6 +373,12 @@ def group_names() -> List[str]:
     return _engine()["groups"]
 
 
+def catalogue_items() -> list:
+    """The synced catalogue (View Products joined to its group), as the engine
+    loaded it — the View Products screen searches this."""
+    return _engine()["catalogue"]
+
+
 def intel_payload(code: str) -> dict:
     return {"code": code, "updates": [u.to_dict() for u in load_updates(code)]}
 

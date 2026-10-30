@@ -28,6 +28,7 @@ class Endpoint:
     INVOICES = "Invoices"
     CREDIT_NOTES = "CreditNotes"
     CUSTOMERS = "Customers"
+    WAREHOUSES = "Warehouses"
 
 
 def has_credentials() -> bool:
