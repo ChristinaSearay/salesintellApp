@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-29
+
+### Added
+- Photos on a customer's page: reps add a photo with an optional caption, see thumbnails, tap for full size, and delete. Photos are shrunk on the phone to 1600px (location data stripped) and stored on the engine's persistent disk, up to 40 per customer.
+
 ## 2026-10-19
 
 ### Added

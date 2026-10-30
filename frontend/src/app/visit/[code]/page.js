@@ -11,6 +11,7 @@ import { api } from "@/lib/api";
 import { useBackHref } from "@/lib/nav";
 import { toneCls } from "@/lib/ui";
 import Pitch from "@/components/Pitch";
+import PhotoGallery from "@/components/PhotoGallery";
 
 function initMarks(prep) {
   const m = {};
@@ -303,6 +304,8 @@ export default function VisitPage({ params }) {
           </button>
         )}
       </section>
+
+      <PhotoGallery code={code} shopName={a.name} />
 
       {/* what I've learned */}
       {prep.learned.length > 0 && (

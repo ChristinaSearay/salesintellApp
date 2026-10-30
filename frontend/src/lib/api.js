@@ -168,6 +168,11 @@ function toPrep(payload) {
   };
 }
 
+function toPhoto(code, p) {
+  const src = `/api/customer/${code}/photos/${p.id}`;
+  return { id: p.id, caption: p.caption || "", when: whenPhrase(p.ts), src, thumb: `${src}/thumb` };
+}
+
 export const api = {
   getAccounts: async () => (await get("/api/customers")).map(toAccount),
   getAttention: async () => toAttention(await get("/api/attention")),
@@ -197,6 +202,14 @@ export const api = {
   // A note typed on the customer's own page: summarised for them (no matching)
   // and saved at once → refreshed prep with the new next move and pitches.
   addCustomerNote: async (code, text) => toPrep(await post(`/api/intel/${code}/note`, { text })),
+
+  // Profile photos (utils/photos.py). image/thumb are base64 JPEGs already
+  // shrunk on the phone (lib/photo.js); every call returns the new list.
+  getPhotos: async (code) => (await get(`/api/customer/${code}/photos`)).map((p) => toPhoto(code, p)),
+  addPhoto: async (code, image, thumb, caption) =>
+    (await post(`/api/customer/${code}/photos`, { image, thumb, caption })).map((p) => toPhoto(code, p)),
+  deletePhoto: async (code, id) =>
+    (await post(`/api/customer/${code}/photos/${id}/delete`, {})).map((p) => toPhoto(code, p)),
 
   // A business we visited that isn't in Unleashed yet. checkProspect only
   // looks (and returns possible duplicates); createProspect writes it.

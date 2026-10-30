@@ -17,6 +17,10 @@ API:
   POST /api/customer/<code>/feedback     -> {accepted:[id], rejections:[{id,reasons,note}]}
   POST /api/customer/<code>/reset        -> clear that customer's learning
   POST /api/customer/<code>/idea         -> {title, detail?} -> the rep's own pitch, reused on similar customers
+  GET  /api/customer/<code>/photos       -> the customer's profile photos (newest first)
+  GET  /api/customer/<code>/photos/<id>[/thumb] -> the JPEG itself
+  POST /api/customer/<code>/photos       -> {image, thumb, caption?} (base64 JPEGs) -> photo list
+  POST /api/customer/<code>/photos/<id>/delete -> photo list
   POST /api/intel/summarise              -> {text, source?} -> proposed updates (not saved)
   GET  /api/intel/<code>                 -> saved live updates for a customer
   POST /api/intel/<code>                 -> save one update (body = a proposal) -> refreshed prep
@@ -32,8 +36,10 @@ from urllib.parse import urlparse
 from constants.config import DEFAULT_PORT
 from constants.feedback import RejectionReason
 from constants.intel import IntelSource
+from constants.photos import JPEG_CONTENT_TYPE, MAX_UPLOAD_BYTES, PHOTO_CACHE_CONTROL, PhotoSize
 from utils.attention import attention_payload, mute_customer, unmute_customer
 from utils.intel import IntelUpdate, add_note, add_update, delete_update, edit_update
+from utils.photos import add_photo, delete_photo, photos_payload, read_photo
 from utils.prospects import check as prospect_check, create as create_prospect
 from utils.recommend import (
     actions_payload,
@@ -91,6 +97,14 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _jpeg(self, body):
+        self.send_response(200)
+        self.send_header("Content-Type", JPEG_CONTENT_TYPE)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", PHOTO_CACHE_CONTROL)
+        self.end_headers()
+        self.wfile.write(body)
+
     def _code_from(self, parts):
         code = parts[2] if len(parts) > 2 else ""
         return code if is_known_customer(code) else None
@@ -112,6 +126,8 @@ class Handler(BaseHTTPRequestHandler):
         if len(parts) == 3 and parts[0] == "api" and parts[1] == "customer":
             code = self._code_from(parts)
             return self._json(actions_payload(code)) if code else self.send_error(404)
+        if len(parts) >= 4 and parts[0] == "api" and parts[1] == "customer" and parts[3] == "photos":
+            return self._get_photos(parts)
         if len(parts) == 3 and parts[0] == "api" and parts[1] == "intel":
             code = self._code_from(parts)
             return self._json(intel_payload(code)) if code else self.send_error(404)
@@ -136,6 +152,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(actions_payload(code))
         if len(parts) == 3 and parts[0] == "api" and parts[1] == "prospects":
             return self._post_prospect(parts[2])
+        if len(parts) >= 4 and parts[0] == "api" and parts[1] == "customer" and parts[3] == "photos":
+            return self._post_photos(parts)
         if len(parts) == 4 and parts[0] == "api" and parts[1] == "customer":
             code = self._code_from(parts)
             if not code:
@@ -201,6 +219,43 @@ class Handler(BaseHTTPRequestHandler):
         except RuntimeError as exc:          # Unleashed rejected or unreachable
             return self._json({"error": str(exc)}, status=502)
         except Exception as exc:
+            return self._json({"error": str(exc)}, status=500)
+        return self.send_error(404)
+
+    def _get_photos(self, parts):
+        code = self._code_from(parts)
+        if not code:
+            return self.send_error(404)
+        if len(parts) == 4:
+            return self._json(photos_payload(code))
+        if len(parts) in (5, 6):
+            try:
+                size = PhotoSize(parts[5]) if len(parts) == 6 else PhotoSize.FULL
+                return self._jpeg(read_photo(code, parts[4], size))
+            except (ValueError, FileNotFoundError):   # bad size / id, or deleted
+                return self.send_error(404)
+        return self.send_error(404)
+
+    def _post_photos(self, parts):
+        code = self._code_from(parts)
+        if not code:
+            return self.send_error(404)
+        try:
+            if len(parts) == 4:
+                # Refuse an oversized upload before reading it into memory.
+                if int(self.headers.get("Content-Length", 0) or 0) > MAX_UPLOAD_BYTES:
+                    return self._json({"error": "That photo is too large to upload."}, status=413)
+                body = self._read_body()
+                add_photo(code, body.get("image", ""), body.get("thumb", ""), body.get("caption", ""))
+                return self._json(photos_payload(code))
+            if len(parts) == 6 and parts[5] == "delete":
+                delete_photo(code, parts[4])
+                return self._json(photos_payload(code))
+        except json.JSONDecodeError:
+            return self._json({"error": "bad json"}, status=400)
+        except ValueError as exc:            # rep-fixable: not a JPEG, too many, long caption
+            return self._json({"error": str(exc)}, status=400)
+        except Exception as exc:  # never 500 silently in a demo
             return self._json({"error": str(exc)}, status=500)
         return self.send_error(404)
 

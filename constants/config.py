@@ -51,6 +51,8 @@ NOTES_DIR = os.environ.get("SEARAY_NOTES_DIR") or os.path.join(BASE_DIR, "notes"
 # A sub-directory of the notes dir so the deployed persistent disk covers it
 # without another env var; the ".json" scan in utils/intel.py skips directories.
 MUTES_DIR = os.path.join(NOTES_DIR, "mutes")
+# Photos reps add to a customer's profile (photos/<code>/), same reasoning.
+PHOTOS_DIR = os.path.join(NOTES_DIR, "photos")
 # Businesses the reps created in Unleashed from a visit. Kept locally too, so
 # they show up in the app straight away instead of only after the next sync
 # (and so we don't offer to create the same shop twice the same day).
