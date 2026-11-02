@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-02
+
+### Added
+- Activity screen: every note and update the sales team has saved, across all customers, most recent first and grouped by day, with the time, the note and a link to the customer.
+
+### Changed
+- "WhatsApp" button on the home screen replaced with "Activity".
+- "Add WhatsApp update" / "Edit N updates" on a customer's page replaced with "Notes history (N)", shown only when the customer has saved notes; it opens that customer's saved notes to edit or remove, without the WhatsApp paste box.
+
 ## 2026-10-30
 
 ### Added

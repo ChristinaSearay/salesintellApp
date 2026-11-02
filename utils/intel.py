@@ -90,21 +90,32 @@ def add_note(code: str, text: str) -> IntelUpdate:
                                   source=IntelSource.MANUAL.value, raw_text=text))
 
 
-def latest_updates() -> Dict[str, IntelUpdate]:
-    """code -> newest saved update, for every customer that has one (one
-    directory scan, so the attention queue doesn't open a file per customer)."""
+def _noted_codes() -> List[str]:
+    """Every customer code with a notes file (one directory scan; the
+    mutes/ and photos/ sub-directories have no .json extension)."""
     try:
         names = os.listdir(NOTES_DIR)
     except FileNotFoundError:
-        return {}
+        return []
+    return [code for code, ext in map(os.path.splitext, names) if ext == ".json"]
+
+
+def latest_updates() -> Dict[str, IntelUpdate]:
+    """code -> newest saved update, for every customer that has one (one
+    directory scan, so the attention queue doesn't open a file per customer)."""
     out: Dict[str, IntelUpdate] = {}
-    for name in names:
-        code, ext = os.path.splitext(name)
-        if ext == ".json":
-            latest = latest_update(code)
-            if latest:
-                out[code] = latest
+    for code in _noted_codes():
+        latest = latest_update(code)
+        if latest:
+            out[code] = latest
     return out
+
+
+def all_updates() -> List[IntelUpdate]:
+    """Every saved update for every customer, newest first — the team's
+    activity feed."""
+    updates = [u for code in _noted_codes() for u in load_updates(code)]
+    return sorted(updates, key=lambda u: u.ts, reverse=True)
 
 
 def delete_update(code: str, update_id: str) -> bool:

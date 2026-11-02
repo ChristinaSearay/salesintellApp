@@ -3,6 +3,9 @@
 // Screen 3 — WhatsApp inbox. Paste (or forward) a team WhatsApp dump; the
 // engine summarises it into per-customer updates; the rep confirms each one
 // and it lands in that customer's "What's going on" + re-ranks their pitches.
+// Opened with ?code= (a customer's "Notes history"), it is just that
+// customer's saved notes — edit or remove — with no paste box: the team no
+// longer uses WhatsApp dumps, notes go in from the customer's page.
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
@@ -297,14 +300,21 @@ function InboxInner() {
           ‹
         </Link>
         <h1 className="mt-5 font-serif text-[30px] font-semibold leading-[1.05] tracking-[-0.02em] text-foreground">
-          WhatsApp updates
+          {focusCode ? "Notes history" : "WhatsApp updates"}
         </h1>
         <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
-          Paste the team chat. I’ll work out who it’s about, add the gist to their
-          <em> What’s going on</em>, and rethink the pitches.
+          {focusCode ? (
+            <>Every note saved on {focusName || focusCode}, newest first. Fix the wording or remove one.</>
+          ) : (
+            <>
+              Paste the team chat. I’ll work out who it’s about, add the gist to their
+              <em> What’s going on</em>, and rethink the pitches.
+            </>
+          )}
         </p>
       </header>
 
+      {!focusCode && (
       <section className="mt-6">
         <textarea
           value={text}
@@ -325,6 +335,7 @@ function InboxInner() {
           <p className="mt-3 rounded-2xl bg-danger-soft px-4 py-3 text-[13px] font-medium text-danger">{err}</p>
         )}
       </section>
+      )}
 
       <AnimatePresence>
         {proposals.length > 0 && (
@@ -365,7 +376,7 @@ function InboxInner() {
       {focusCode && (
         <section className="mt-8">
           <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-            Saved updates · {focusName || focusCode}
+            Saved notes · {focusName || focusCode}
           </h2>
           {history.length === 0 ? (
             <p className="mt-2 text-[14px] text-muted-foreground">No updates or notes yet.</p>

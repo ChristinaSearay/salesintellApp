@@ -11,6 +11,7 @@ API:
   GET  /api/reasons                      -> rejection-reason chips
   GET  /api/customers                    -> account cards for every customer (by spend)
   GET  /api/attention                    -> the top customers that need attention now
+  GET  /api/activity                     -> every saved note / update, all customers, newest first
   POST /api/attention/<code>/note        -> {text, mute?} -> save a rep note, returns the refreshed queue
   POST /api/attention/<code>/unmute      -> alert on this account again -> refreshed prep
   GET  /api/customer/<code>              -> customer + current 3 actions
@@ -40,6 +41,7 @@ from constants.feedback import RejectionReason
 from constants.intel import IntelSource
 from constants.photos import JPEG_CONTENT_TYPE, MAX_UPLOAD_BYTES, PHOTO_CACHE_CONTROL, PhotoSize
 from constants.stock import IN_STOCK_ONLY
+from utils.activity import activity_payload
 from utils.attention import attention_payload, mute_customer, unmute_customer
 from utils.intel import IntelUpdate, add_note, add_update, delete_update, edit_update
 from utils.photos import add_photo, delete_photo, photos_payload, read_photo
@@ -128,6 +130,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(customer_list())
         if path == "/api/attention":
             return self._json(attention_payload())
+        if path == "/api/activity":
+            return self._json(activity_payload())
         if path == "/api/products":
             return self._get_products()
         if path == "/api/product":

@@ -237,11 +237,13 @@ export default function VisitPage({ params }) {
       <section className="mt-4 rounded-3xl border border-border bg-card p-4 shadow-[0_8px_24px_-18px_rgba(33,29,23,0.5)]">
         <div className="flex items-baseline justify-between gap-2">
           <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">What&apos;s going on</h2>
-          <Link href={`/inbox?code=${code}`} className="text-[12px] font-semibold text-primary">
-            {prep.intelCount > 0
-              ? `✏️ Edit ${prep.intelCount} update${prep.intelCount === 1 ? "" : "s"}`
-              : "💬 Add WhatsApp update"}
-          </Link>
+          {/* New notes go in with "What's going on?" below; this is the
+              history, where a saved note is fixed or removed. */}
+          {prep.intelCount > 0 && (
+            <Link href={`/inbox?code=${code}`} className="text-[12px] font-semibold text-primary">
+              📝 Notes history ({prep.intelCount})
+            </Link>
+          )}
         </div>
         {prep.intelUpdated && (
           <p className="mt-1 text-[11px] text-muted-foreground">

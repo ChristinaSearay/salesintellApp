@@ -239,6 +239,8 @@ function toPhoto(code, p) {
 export const api = {
   getAccounts: async () => (await get("/api/customers")).map(toAccount),
   getAttention: async () => toAttention(await get("/api/attention")),
+  // Every saved note / update across all customers, newest first.
+  getActivity: () => get("/api/activity"),
   // Saving a note sends the customer to the back of the queue → refreshed queue.
   // mute = "do not alert again": off the queue until they order (utils/mute.py).
   saveNote: async (code, text, mute = false) =>

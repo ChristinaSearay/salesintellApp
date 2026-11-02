@@ -8,7 +8,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
-import { PRODUCTS, SCREEN, useRememberScreen } from "@/lib/nav";
+import { ACTIVITY, PRODUCTS, SCREEN, useRememberScreen } from "@/lib/nav";
 import AttentionCard from "@/components/AttentionCard";
 
 const PILL =
@@ -44,8 +44,8 @@ export default function AttentionPage() {
           <Link href={SCREEN.CUSTOMERS} className={PILL}>
             <span aria-hidden>👥</span> All customers
           </Link>
-          <Link href="/inbox" className={PILL}>
-            <span aria-hidden>💬</span> WhatsApp
+          <Link href={ACTIVITY} className={PILL}>
+            <span aria-hidden>🕒</span> Activity
           </Link>
           <Link href={PRODUCTS} className={PILL}>
             <span aria-hidden>💎</span> Products
