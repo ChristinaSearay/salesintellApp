@@ -6,7 +6,8 @@ warehouse, all in parallel (~3s — Unleashed answers each in 1-3s). The product
 Guid and the warehouse list are remembered so a product only pays for that
 one round: Guids never change, and warehouses are re-read hourly. The totals
 are the sum of the warehouse rows rather than another (slower) request, so
-they always agree with the breakdown. Cost stays out: reps don't see it.
+they always agree with the breakdown. Sell price tiers come from the same
+Product call (utils/pricing.py). Cost stays out: reps don't see it.
 """
 import threading
 import time
@@ -24,6 +25,7 @@ from constants.stock import (
 from constants.unleashed import Endpoint
 from utils import unleashed as api
 from utils.parsing import parse_number
+from utils.pricing import price_tiers
 
 QUANTITIES = ("on_hand", "allocated", "available", "on_purchase")
 
@@ -118,6 +120,7 @@ def live_product(code: str) -> dict:
         "group": _group_name(product),
         "image": _image(product),
         "obsolete": bool(product.get("Obsolete")),
+        "prices": price_tiers(product),
         "totals": {q: sum(r[q] for r in rows) for q in QUANTITIES},
         "warehouses": group_warehouses(rows),
         "checked_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),

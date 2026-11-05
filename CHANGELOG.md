@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-05
+
+### Added
+- Product page shows Exclusive, Buying Group and VIP prices from Unleashed under the stock, with "Not set" for a tier the product has no price in.
+
 ## 2026-11-02
 
 ### Added

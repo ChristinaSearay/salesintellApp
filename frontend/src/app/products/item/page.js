@@ -1,7 +1,8 @@
 "use client";
 
 // One product, live from Unleashed: how many are on hand and in which
-// warehouses, grouped as Our stock / At customers (consignment) / Not for sale.
+// warehouses, grouped as Our stock / At customers (consignment) / Not for sale,
+// then its Exclusive / Buying Group / VIP prices.
 // The synced numbers show at once; the live check takes a few seconds because
 // Unleashed is asked about every warehouse separately (utils/stock.py).
 
@@ -50,6 +51,26 @@ function WarehouseGroup({ group }) {
               <td className="py-2 text-right font-semibold text-foreground">{w.onHand}</td>
               <td className="py-2 text-right text-muted-foreground">{w.allocated}</td>
               <td className="py-2 text-right text-muted-foreground">{w.available}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+function Prices({ prices }) {
+  return (
+    <section className={`mt-3 ${CARD}`}>
+      <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Prices</h2>
+      <table className="mt-2 w-full text-[13.5px]">
+        <tbody>
+          {prices.map((t) => (
+            <tr key={t.name} className="border-t border-border first:border-t-0">
+              <td className="py-2 pr-2 text-foreground">{t.name}</td>
+              <td className={`py-2 text-right ${t.price ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
+                {t.price || "Not set"}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -133,6 +154,7 @@ function ProductInner() {
           ) : (
             <p className={`mt-3 text-[14px] text-muted-foreground ${CARD}`}>None in any warehouse right now.</p>
           )}
+          {live.prices.length > 0 && <Prices prices={live.prices} />}
         </>
       ) : (
         <>

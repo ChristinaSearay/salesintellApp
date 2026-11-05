@@ -193,6 +193,10 @@ function toProductList(payload) {
   };
 }
 
+// Unit prices to the cent ($214.33): a few dollars matter between tiers.
+const unitPrice = (v) =>
+  v == null ? "" : "$" + v.toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 // One product, live from Unleashed: totals plus warehouses grouped as
 // Our stock / At customers (consignment) / Not for sale (constants/stock.py).
 function toProductDetail(p) {
@@ -202,6 +206,8 @@ function toProductDetail(p) {
     group: p.group || "",
     image: p.image || "",
     obsolete: !!p.obsolete,
+    // Sell price tiers (constants/pricing.py); price "" = not set in Unleashed.
+    prices: (p.prices || []).map((t) => ({ name: t.name, price: unitPrice(t.price) })),
     totals: [
       { label: "On hand", value: qty(p.totals.on_hand) },
       { label: "Available", value: qty(p.totals.available) },
